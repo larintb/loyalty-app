@@ -54,7 +54,10 @@ export function RegisterModal({ open, defaultPhone, onClose, onRegistered }: Pro
               id="phone"
               name="phone"
               defaultValue={defaultPhone}
+              type="tel"
               inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="tel"
               placeholder="5512345678"
               required
             />

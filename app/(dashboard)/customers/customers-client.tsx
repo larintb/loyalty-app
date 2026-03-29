@@ -40,6 +40,9 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por nombre o teléfono..."
           className="pl-9"
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
         />
       </div>
 

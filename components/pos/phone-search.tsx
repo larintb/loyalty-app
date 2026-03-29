@@ -83,7 +83,10 @@ export function PhoneSearch({ onCustomerFound, onCustomerCleared, onRegisterNew 
           onChange={(e) => setPhone(formatPhone(e.target.value))}
           placeholder="(55) 1234-5678"
           className="pl-9 pr-9 text-lg h-12 font-mono"
+          type="tel"
           inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="tel"
           autoFocus
         />
         {phone && (
