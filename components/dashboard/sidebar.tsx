@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Users,
   TrendingUp,
+  Megaphone,
   DollarSign,
   Settings,
   LogOut,
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
   { href: '/customers', label: 'Clientes', icon: Users },
+  { href: '/campaigns', label: 'Campañas', icon: Megaphone },
   { href: '/reports', label: 'Reportes', icon: TrendingUp },
   { href: '/settings', label: 'Configuración', icon: Settings },
   { href: '/coming-soon', label: 'Próximamente', icon: DollarSign, disabled: true },
@@ -31,6 +33,7 @@ const NAV_ITEMS = [
 const BOTTOM_NAV_ITEMS = [
   { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
   { href: '/pos', label: 'POS', icon: ShoppingCart },
+  { href: '/campaigns', label: 'Campañas', icon: Megaphone },
   { href: '/customers', label: 'Clientes', icon: Users },
   { href: '/reports', label: 'Reportes', icon: TrendingUp },
   { href: '/settings', label: 'Config', icon: Settings },
@@ -106,7 +109,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
 
       {/* Mobile top bar */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b bg-background sticky top-0 z-40">
-        <p className="font-bold truncate max-w-[200px]">{businessName}</p>
+        <p className="font-bold truncate max-w-50">{businessName}</p>
         <Button
           variant="ghost"
           size="icon"
@@ -143,7 +146,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
         className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/80 bg-background/95 backdrop-blur-sm"
         style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="grid grid-cols-5 gap-1 px-2 pt-2">
+        <div className="grid grid-cols-6 gap-1 px-2 pt-2">
           {BOTTOM_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const active =
               href === '/dashboard'
