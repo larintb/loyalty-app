@@ -82,7 +82,7 @@ async function ensureMonthlyPeriod(
   month?: string,
   resetMode: FinanceResetMode = 'carry_over'
 ) {
-  let targetMonth = month
+  let targetMonth: string | null | undefined = month
 
   if (!targetMonth) {
     const { data: latestPeriod } = await supabase
