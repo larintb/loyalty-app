@@ -19,9 +19,9 @@ CREATE TABLE subscription_plans (
 
 -- Seed de planes
 INSERT INTO subscription_plans (name, slug, price_mxn, max_customers, features) VALUES
-  ('Básico',      'basic',     349.00,  100,  '["POS","Tickets WhatsApp","Puntos básicos"]'),
-  ('Crecimiento', 'growth',    899.00,  500,  '["POS","Tickets WhatsApp/Email","Puntos avanzados","Finanzas","Reportes"]'),
-  ('Ilimitado',   'unlimited', 1799.00, NULL, '["Todo lo anterior","Campañas","Multi-sucursal","Soporte prioritario"]');
+  ('Básico',      'basic',     599.00,  100,  '["POS","Tickets WhatsApp","Puntos básicos"]'),
+  ('Crecimiento', 'growth',    799.00,  500,  '["POS","Tickets WhatsApp/Email","Puntos avanzados","Finanzas","Reportes"]'),
+  ('Ilimitado',   'unlimited', 999.00, NULL, '["Todo lo anterior","Campañas","Multi-sucursal","Soporte prioritario"]');
 
 -- ============================================
 -- TABLA: businesses
