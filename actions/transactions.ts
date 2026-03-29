@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { calculateEarnedPoints, calculateRedemptionValue, canRedeem } from '@/lib/points/calculator'
 import { sendTicketMessage } from '@/lib/whatsapp/client'
-import type { TransactionInsert } from '@/types/database'
+import type { FinancePeriodInsert, TransactionInsert } from '@/types/database'
 
 export type SalePayload = {
   customerId: string | null
@@ -27,6 +27,76 @@ export type SaleResult =
     }
   | { success: false; error: string }
 
+function parseMonthRange(month: string) {
+  const [year, mon] = month.split('-').map(Number)
+  const end = new Date(year, mon, 0)
+  return {
+    startDate: `${month}-01`,
+    endDate: `${month}-${String(end.getDate()).padStart(2, '0')}`,
+  }
+}
+
+async function ensureMonthlyFinancePeriod(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  businessId: string,
+  dateISO: string
+): Promise<{ id: string } | { error: string }> {
+  const month = dateISO.slice(0, 7)
+  const { startDate, endDate } = parseMonthRange(month)
+
+  const { data: existingPeriod } = await supabase
+    .from('finance_periods')
+    .select('id, status')
+    .eq('business_id', businessId)
+    .eq('period_type', 'month')
+    .eq('period_start', startDate)
+    .eq('period_end', endDate)
+    .maybeSingle()
+
+  if (existingPeriod) {
+    if (existingPeriod.status === 'closed') {
+      return { error: 'El periodo financiero del mes está cerrado. Abre el siguiente periodo para registrar ventas.' }
+    }
+    return { id: existingPeriod.id }
+  }
+
+  const { data: previousClosed } = await supabase
+    .from('finance_periods')
+    .select('closing_balance')
+    .eq('business_id', businessId)
+    .eq('period_type', 'month')
+    .eq('status', 'closed')
+    .lt('period_start', startDate)
+    .order('period_start', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const insert: FinancePeriodInsert = {
+    business_id: businessId,
+    period_type: 'month',
+    period_start: startDate,
+    period_end: endDate,
+    status: 'open',
+    opening_balance: Number(previousClosed?.closing_balance ?? 0),
+    total_income: 0,
+    total_expense: 0,
+    closing_balance: Number(previousClosed?.closing_balance ?? 0),
+    reset_mode: 'carry_over',
+  }
+
+  const { data: createdPeriod, error } = await supabase
+    .from('finance_periods')
+    .insert(insert)
+    .select('id')
+    .single()
+
+  if (error || !createdPeriod) {
+    return { error: 'No se pudo preparar el periodo financiero para esta venta.' }
+  }
+
+  return { id: createdPeriod.id }
+}
+
 export async function createSale(payload: SalePayload): Promise<SaleResult> {
   const supabase = await createClient()
 
@@ -49,6 +119,11 @@ export async function createSale(payload: SalePayload): Promise<SaleResult> {
   if (!business) return { success: false, error: 'Negocio no encontrado.' }
 
   const config = business.points_config
+  const saleDateISO = new Date().toISOString().split('T')[0]
+  const financePeriod = await ensureMonthlyFinancePeriod(supabase, businessId, saleDateISO)
+  if ('error' in financePeriod) {
+    return { success: false, error: financePeriod.error }
+  }
 
   const subtotal = payload.total
   const discount = payload.discount ?? 0
@@ -164,11 +239,14 @@ export async function createSale(payload: SalePayload): Promise<SaleResult> {
   await supabase.from('finance_entries').insert({
     business_id: businessId,
     staff_id: staffId,
+    period_id: financePeriod.id,
     transaction_id: transaction.id,
     type: 'income',
     category: 'venta',
     amount: total,
     description: `Ticket ${transaction.ticket_number}`,
+    date: saleDateISO,
+    locked: false,
   })
 
   // Obtener nombre del cliente para el resultado

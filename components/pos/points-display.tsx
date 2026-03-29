@@ -13,11 +13,13 @@ type Props = {
   subtotal: number
   config: PointsConfig
   onRedemptionChange: (pointsToRedeem: number, discount: number) => void
+  tone?: 'default' | 'dark'
 }
 
-export function PointsDisplay({ currentPoints, subtotal, config, onRedemptionChange }: Props) {
+export function PointsDisplay({ currentPoints, subtotal, config, onRedemptionChange, tone = 'default' }: Props) {
   const [redeeming, setRedeeming] = useState(false)
   const [pointsInput, setPointsInput] = useState('')
+  const isDark = tone === 'dark'
 
   const maxPoints = maxRedeemablePoints(subtotal, currentPoints, config)
   const pointsToRedeem = Math.min(parseInt(pointsInput) || 0, maxPoints)
@@ -44,18 +46,24 @@ export function PointsDisplay({ currentPoints, subtotal, config, onRedemptionCha
 
   if (currentPoints === 0) {
     return (
-      <div className="rounded-lg border px-4 py-3 text-sm text-muted-foreground">
+      <div className={`rounded-lg border px-4 py-3 text-sm ${
+        isDark
+          ? 'border-white/20 text-white/70'
+          : 'text-muted-foreground'
+      }`}>
         El cliente no tiene puntos acumulados aún.
       </div>
     )
   }
 
   return (
-    <div className="rounded-lg border px-4 py-3 space-y-3">
+    <div className={`rounded-lg border px-4 py-3 space-y-3 ${isDark ? 'border-white/20 text-white' : ''}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Canjear puntos</span>
-          <Badge variant="secondary">⭐ {currentPoints} disponibles</Badge>
+          <Badge variant="secondary" className={isDark ? 'bg-white/20 text-white border-transparent' : ''}>
+            ⭐ {currentPoints} disponibles
+          </Badge>
         </div>
         <Switch checked={redeeming} onCheckedChange={handleToggle} />
       </div>
@@ -63,16 +71,20 @@ export function PointsDisplay({ currentPoints, subtotal, config, onRedemptionCha
       {redeeming && (
         <div className="space-y-2 pt-1">
           <div className="flex items-center gap-3">
-            <Label className="text-sm text-muted-foreground w-28 shrink-0">
+            <Label className={`text-sm w-28 shrink-0 ${isDark ? 'text-white/75' : 'text-muted-foreground'}`}>
               Puntos a canjear
             </Label>
             <Input
               value={pointsInput}
               onChange={(e) => handlePointsChange(e.target.value)}
               inputMode="numeric"
-              className="w-24 text-center"
+              className={`w-24 text-center ${
+                isDark
+                  ? 'bg-white text-black border-white placeholder:text-black/50'
+                  : ''
+              }`}
             />
-            <span className="text-sm text-muted-foreground">
+            <span className={`text-sm ${isDark ? 'text-white/70' : 'text-muted-foreground'}`}>
               máx. {maxPoints}
             </span>
           </div>

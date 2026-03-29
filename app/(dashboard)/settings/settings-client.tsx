@@ -33,7 +33,7 @@ type BusinessData = {
 
 export function SettingsClient({ business }: { business: BusinessData }) {
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-2xl space-y-8 page-enter motion-stagger">
       <BusinessSection business={business} />
       <PointsSection config={business.points_config} />
     </div>
@@ -70,7 +70,7 @@ function BusinessSection({ business }: { business: BusinessData }) {
   }
 
   return (
-    <section>
+    <section className="card-enter">
       {/* Encabezado de sección */}
       <div className="flex items-center gap-3 mb-5">
         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0">
@@ -84,7 +84,7 @@ function BusinessSection({ business }: { business: BusinessData }) {
         </div>
       </div>
 
-      <div className="rounded-xl border bg-card divide-y overflow-hidden">
+      <div className="rounded-xl border bg-card divide-y overflow-hidden lift-hover">
         {/* Nombre — campo principal, más prominente */}
         <div className="px-4 py-3">
           <Label className="text-xs text-muted-foreground uppercase tracking-wide">
@@ -170,7 +170,7 @@ function FieldRow({
   optional?: boolean
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5">
+    <div className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-200 hover:bg-muted/40">
       <div className="text-muted-foreground shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
@@ -242,7 +242,7 @@ function PointsSection({ config }: { config: PointsConfig }) {
   }
 
   return (
-    <section>
+    <section className="card-enter">
       {/* Encabezado */}
       <div className="flex items-center gap-3 mb-5">
         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 shrink-0">
@@ -258,7 +258,7 @@ function PointsSection({ config }: { config: PointsConfig }) {
 
       <div className="space-y-3">
         {/* Card: Acumulación */}
-        <div className="rounded-xl border bg-card p-5 space-y-4">
+        <div className="rounded-xl border bg-card p-5 space-y-4 lift-hover">
           <div className="flex items-center gap-2">
             <BadgePercent className="h-4 w-4 text-green-600" />
             <span className="text-sm font-medium">Cómo se acumulan</span>
@@ -300,7 +300,7 @@ function PointsSection({ config }: { config: PointsConfig }) {
         </div>
 
         {/* Card: Canjeo */}
-        <div className="rounded-xl border bg-card p-5 space-y-4">
+        <div className="rounded-xl border bg-card p-5 space-y-4 lift-hover">
           <div className="flex items-center gap-2">
             <Gift className="h-4 w-4 text-purple-600" />
             <span className="text-sm font-medium">Cómo se canjean</span>
@@ -344,7 +344,7 @@ function PointsSection({ config }: { config: PointsConfig }) {
         </div>
 
         {/* Card: Extras */}
-        <div className="rounded-xl border bg-card divide-y overflow-hidden">
+        <div className="rounded-xl border bg-card divide-y overflow-hidden lift-hover">
           {/* Bono bienvenida */}
           <div className="flex items-center justify-between px-5 py-3.5 gap-4">
             <div className="flex items-start gap-3">

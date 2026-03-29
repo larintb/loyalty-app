@@ -48,7 +48,7 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       <Sidebar businessName={businessName} />
       <main className="min-w-0 flex-1 overflow-auto">
-        <div className="container mx-auto px-4 py-6 max-w-7xl">
+        <div className="container mx-auto px-4 py-6 pb-24 lg:pb-6 max-w-7xl">
           {children}
         </div>
       </main>

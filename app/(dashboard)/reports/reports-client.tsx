@@ -33,7 +33,7 @@ export function ReportsClient({
   const metrics = period === 7 ? metrics7 : metrics30
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-enter">
       {/* Selector de período */}
       <div className="flex gap-1.5 bg-muted p-1 rounded-lg w-fit">
         {([7, 30] as Period[]).map((p) => (
@@ -52,7 +52,7 @@ export function ReportsClient({
       </div>
 
       {/* Métricas del período */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 motion-stagger">
         <MetricCard
           icon={<TrendingUp className="h-4 w-4 text-green-600" />}
           label="Ventas totales"
@@ -80,7 +80,7 @@ export function ReportsClient({
       </div>
 
       {/* Gráfica de ventas */}
-      <Card>
+      <Card className="card-enter">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Tendencia de ventas</CardTitle>
         </CardHeader>
@@ -92,7 +92,7 @@ export function ReportsClient({
       {/* Grid: Top clientes + Churn */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Top clientes */}
-        <Card>
+        <Card className="card-enter">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Clientes con mayor gasto</CardTitle>
@@ -151,7 +151,7 @@ export function ReportsClient({
         </Card>
 
         {/* Churn risk */}
-        <Card>
+        <Card className="card-enter">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <CardTitle className="text-base">Clientes inactivos</CardTitle>
@@ -230,7 +230,7 @@ function MetricCard({
   sub: string
 }) {
   return (
-    <Card>
+    <Card className="lift-hover">
       <CardContent className="pt-4 pb-4">
         <div className="flex items-center gap-1.5 mb-1">
           {icon}

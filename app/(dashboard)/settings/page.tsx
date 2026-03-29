@@ -7,7 +7,7 @@ export default async function SettingsPage() {
   if (!business) redirect('/login')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-enter">
       <div>
         <h1 className="text-2xl font-bold">Configuración</h1>
         <p className="text-muted-foreground text-sm">

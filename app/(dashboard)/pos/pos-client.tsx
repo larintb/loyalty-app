@@ -142,98 +142,102 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
   // ── Pantalla de confirmación ──────────────────────────────────────────────
   if (saleResult) {
     return (
-      <div className="max-w-sm mx-auto mt-8">
-        <Card>
-          <CardContent className="pt-8 pb-6 text-center space-y-4">
-            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
-            <div>
-              <h2 className="text-2xl font-bold">¡Listo!</h2>
-              <p className="text-muted-foreground text-sm">#{saleResult.ticketNumber}</p>
-            </div>
+      <div className="mt-3 min-h-[calc(100svh-14rem)] w-full page-enter flex items-center">
+        <div className="relative w-full overflow-hidden rounded-3xl border border-emerald-300/40 bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 px-4 py-6 shadow-lg shadow-emerald-900/30">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_55%)]" />
+          <Card className="relative mx-auto max-w-md border-white/20 bg-white/92 backdrop-blur-sm card-enter">
+            <CardContent className="space-y-4 pb-6 pt-8 text-center">
+              <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600 success-check-pop" />
+              <div>
+                <h2 className="text-2xl font-bold text-emerald-900">Orden confirmada</h2>
+                <p className="text-sm text-emerald-800/80">#{saleResult.ticketNumber}</p>
+              </div>
 
-            <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-left text-sm">
+              <div className="rounded-xl bg-emerald-50 p-4 space-y-2 text-left text-sm">
               {saleResult.customerName && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Cliente</span>
-                  <span className="font-medium">{saleResult.customerName}</span>
+                  <span className="text-emerald-900/70">Cliente</span>
+                  <span className="font-medium text-emerald-950">{saleResult.customerName}</span>
                 </div>
               )}
               <div className="flex justify-between text-base">
-                <span className="text-muted-foreground">Total</span>
-                <span className="font-bold">${saleResult.total.toFixed(2)}</span>
+                <span className="text-emerald-900/70">Total</span>
+                <span className="font-bold text-emerald-950">${saleResult.total.toFixed(2)}</span>
               </div>
               {saleResult.pointsRedeemed > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Puntos canjeados</span>
+                  <span className="text-emerald-900/70">Puntos canjeados</span>
                   <span className="text-orange-500">−{saleResult.pointsRedeemed} pts</span>
                 </div>
               )}
               {saleResult.pointsEarned > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Puntos ganados</span>
+                  <span className="text-emerald-900/70">Puntos ganados</span>
                   <span className="text-green-600 font-semibold">+{saleResult.pointsEarned} pts</span>
                 </div>
               )}
               {saleResult.customerName && (
                 <>
                   <Separator />
-                  <div className="flex justify-between font-semibold">
+                  <div className="flex justify-between font-semibold text-emerald-900">
                     <span>Saldo actual</span>
                     <span>⭐ {saleResult.newBalance} pts</span>
                   </div>
                 </>
               )}
-            </div>
+              </div>
 
-            {/* Botón WhatsApp (solo si hay cliente con teléfono) */}
-            {saleResult.customerPhone && saleResult.customerName && (
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                size="lg"
-                onClick={handleSendWhatsApp}
-                disabled={waSending || waSent}
-              >
-                {waSent ? (
-                  <>
-                    <Check className="h-4 w-4 text-green-500" />
-                    <span className="text-green-600">Ticket enviado</span>
-                  </>
-                ) : waSending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <MessageCircle className="h-4 w-4 text-green-500" />
-                    Enviar por WhatsApp
-                  </>
-                )}
+              {/* Botón WhatsApp (solo si hay cliente con teléfono) */}
+              {saleResult.customerPhone && saleResult.customerName && (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 transition-all duration-300"
+                  size="lg"
+                  onClick={handleSendWhatsApp}
+                  disabled={waSending || waSent}
+                >
+                  {waSent ? (
+                    <>
+                      <Check className="h-4 w-4 text-green-500" />
+                      <span className="text-green-700">Mensaje enviado</span>
+                    </>
+                  ) : waSending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="h-4 w-4 text-green-500" />
+                      Enviar por WhatsApp
+                    </>
+                  )}
+                </Button>
+              )}
+
+              <Button onClick={resetPOS} className="w-full gap-2 bg-emerald-700 hover:bg-emerald-800" size="lg">
+                <RotateCcw className="h-4 w-4" />
+                Nueva venta
               </Button>
-            )}
-
-            <Button onClick={resetPOS} className="w-full gap-2" size="lg">
-              <RotateCcw className="h-4 w-4" />
-              Nueva venta
-            </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   // ── POS principal ─────────────────────────────────────────────────────────
   return (
-    <div className="max-w-md mx-auto space-y-4">
+    <div className="max-w-md mx-auto space-y-4 page-enter motion-stagger">
 
       {/* 1. Buscar cliente */}
-      <Card>
+      <Card className="lift-hover bg-black text-white border-black">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">1. Cliente (opcional)</CardTitle>
+          <CardTitle className="text-base text-white">1. Cliente (opcional)</CardTitle>
         </CardHeader>
         <CardContent>
           <PhoneSearch
+            tone="dark"
             onCustomerFound={(c) => {
               setCustomer(c)
               setTimeout(() => totalRef.current?.focus(), 100)
@@ -252,13 +256,13 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
       </Card>
 
       {/* 2. Total del ticket */}
-      <Card>
+      <Card className="lift-hover bg-black text-white border-black">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">2. Total del ticket</CardTitle>
+          <CardTitle className="text-base text-white">2. Total del ticket</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-black/60 font-medium">
               $
             </span>
             <Input
@@ -267,7 +271,7 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
               onChange={(e) => setTotalInput(normalizeAmountInput(e.target.value))}
               onKeyDown={(e) => e.key === 'Enter' && handleSale()}
               placeholder="0.00"
-              className="pl-7 text-2xl h-14 font-mono font-semibold"
+              className="pl-7 text-2xl h-14 font-mono font-semibold bg-white text-black placeholder:text-black/50 border-white"
               inputMode="decimal"
             />
           </div>
@@ -275,7 +279,7 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
           {/* Multiplicador de puntos (solo si hay cliente) */}
           {customer && (
             <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground text-center">Puntos bonus</p>
+              <p className="text-xs text-white/70 text-center">Puntos bonus</p>
               <div className="grid grid-cols-3 gap-2">
                 {([1, 2, 3] as const).map((m) => (
                   <button
@@ -286,7 +290,7 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
                         ? m === 1
                           ? 'border-primary bg-primary text-primary-foreground'
                           : 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        : 'border-border text-muted-foreground hover:border-primary/50'
+                        : 'border-white/20 text-white/80 hover:border-white/50'
                     }`}
                   >
                     {m === 1 ? 'x1' : m === 2 ? '⭐ x2' : '🌟 x3'}
@@ -298,18 +302,18 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
 
           {/* Preview de puntos que va a ganar */}
           {rawTotal > 0 && customer && pointsEarned > 0 && (
-            <p className="text-sm text-center text-muted-foreground">
+            <p className="text-sm text-center text-white/80">
               El cliente ganará{' '}
-              <span className={`font-semibold ${multiplier > 1 ? 'text-yellow-600 dark:text-yellow-400' : 'text-foreground'}`}>
+              <span className={`font-semibold ${multiplier > 1 ? 'text-yellow-400' : 'text-white'}`}>
                 +{pointsEarned} punto{pointsEarned !== 1 ? 's' : ''}
               </span>
               {multiplier > 1 && (
-                <span className="text-xs ml-1">(x{multiplier} bonus)</span>
+                <span className="text-xs ml-1 text-white/70">(x{multiplier} bonus)</span>
               )}
             </p>
           )}
           {rawTotal > 0 && !customer && (
-            <p className="text-xs text-center text-muted-foreground">
+            <p className="text-xs text-center text-white/70">
               Venta sin cliente — no acumula puntos
             </p>
           )}
@@ -318,12 +322,13 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
 
       {/* 3. Canjear puntos (solo si hay cliente con puntos) */}
       {customer && customer.total_points > 0 && rawTotal > 0 && (
-        <Card>
+        <Card className="lift-hover">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">3. Canjear puntos</CardTitle>
           </CardHeader>
           <CardContent>
             <PointsDisplay
+              tone="dark"
               currentPoints={customer.total_points}
               subtotal={rawTotal}
               config={pointsConfig}
@@ -337,15 +342,15 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
       )}
 
       {/* Resumen y cobrar */}
-      <Card>
+      <Card className="lift-hover bg-black text-white border-black">
         <CardContent className="pt-4 space-y-3">
           {discountByPoints > 0 && (
             <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between text-muted-foreground">
+              <div className="flex justify-between text-white/75">
                 <span>Ticket</span>
                 <span>${rawTotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-green-600 dark:text-green-400">
+              <div className="flex justify-between text-green-400">
                 <span>Descuento puntos</span>
                 <span>−${discountByPoints.toFixed(2)}</span>
               </div>
@@ -357,7 +362,7 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
             <span>${finalTotal.toFixed(2)}</span>
           </div>
           <Button
-            className="w-full h-12 text-base"
+            className="w-full h-12 text-base bg-white text-black hover:bg-white/90"
             onClick={handleSale}
             disabled={processing || rawTotal <= 0}
           >

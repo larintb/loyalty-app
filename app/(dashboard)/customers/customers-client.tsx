@@ -37,9 +37,9 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
   })
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 page-enter">
       {/* Búsqueda */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 card-enter">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -72,17 +72,17 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
 
       {/* Lista */}
       {filtered.length === 0 ? (
-        <Card>
+        <Card className="card-enter">
           <CardContent className="py-12 text-center text-muted-foreground text-sm">
             {search ? 'Sin resultados para esa búsqueda.' : 'Aún no tienes clientes registrados.'}
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 motion-stagger">
           {filtered.map((c) => (
             <Card
               key={c.id}
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              className="cursor-pointer hover:bg-muted/50 transition-colors lift-hover"
               onClick={() => router.push(`/customers/${c.id}`)}
             >
               <CardContent className="py-3 px-4">

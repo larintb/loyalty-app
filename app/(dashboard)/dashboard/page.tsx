@@ -18,67 +18,67 @@ export default async function DashboardPage() {
   const monthName = now.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-enter">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground text-sm capitalize">{monthName}</p>
       </div>
 
       {/* Métricas principales */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 motion-stagger">
+        <Card className="lift-hover bg-black text-white border-black">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-muted-foreground">Clientes</span>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-white/80">Clientes</span>
+              <Users className="h-4 w-4 text-white/80" />
             </div>
             <p className="text-2xl font-bold">{metrics.totalCustomers}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">registrados activos</p>
+            <p className="text-xs text-white/70 mt-0.5">registrados activos</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lift-hover bg-black text-white border-black">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-muted-foreground">Ventas hoy</span>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-white/80">Ventas hoy</span>
+              <TrendingUp className="h-4 w-4 text-white/80" />
             </div>
             <p className="text-2xl font-bold">${metrics.salesToday.toFixed(0)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">del día</p>
+            <p className="text-xs text-white/70 mt-0.5">del día</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lift-hover bg-black text-white border-black">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-muted-foreground">Ventas del mes</span>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-white/80">Ventas del mes</span>
+              <BarChart3 className="h-4 w-4 text-white/80" />
             </div>
             <p className="text-2xl font-bold">${metrics.salesMonth.toFixed(0)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">en ventas</p>
+            <p className="text-xs text-white/70 mt-0.5">en ventas</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lift-hover bg-black text-white border-black">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-muted-foreground">Utilidad del mes</span>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-white/80">Utilidad del mes</span>
+              <DollarSign className="h-4 w-4 text-white/80" />
             </div>
             <p
               className={`text-2xl font-bold ${
-                metrics.profitMonth >= 0 ? 'text-green-600' : 'text-red-500'
+                metrics.profitMonth >= 0 ? 'text-green-400' : 'text-red-400'
               }`}
             >
               {metrics.profitMonth >= 0 ? '+' : ''}${metrics.profitMonth.toFixed(0)}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">ingresos − egresos</p>
+            <p className="text-xs text-white/70 mt-0.5">ingresos − egresos</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Últimas ventas */}
-      <Card>
+      <Card className="card-enter">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base">Últimas ventas</CardTitle>
           <Link
@@ -132,7 +132,7 @@ export default async function DashboardPage() {
           { href: '/finance', label: 'Finanzas', emoji: '💰' },
         ].map((item) => (
           <Link key={item.href} href={item.href}>
-            <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <Card className="hover:bg-muted/50 transition-colors cursor-pointer lift-hover">
               <CardContent className="pt-4 pb-4 text-center">
                 <div className="text-2xl mb-1">{item.emoji}</div>
                 <p className="text-sm font-medium">{item.label}</p>

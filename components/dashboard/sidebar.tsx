@@ -27,6 +27,14 @@ const NAV_ITEMS = [
   { href: '/settings', label: 'Configuración', icon: Settings },
 ]
 
+const BOTTOM_NAV_ITEMS = [
+  { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
+  { href: '/pos', label: 'POS', icon: ShoppingCart },
+  { href: '/customers', label: 'Clientes', icon: Users },
+  { href: '/finance', label: 'Finanzas', icon: DollarSign },
+  { href: '/reports', label: 'Reportes', icon: TrendingUp },
+]
+
 interface NavLinksProps {
   pathname: string
   onClose: () => void
@@ -45,6 +53,7 @@ function NavLinks({ pathname, onClose }: NavLinksProps) {
             key={href}
             href={href}
             onClick={onClose}
+            aria-current={active ? 'page' : undefined}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               active
@@ -96,6 +105,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
           variant="ghost"
           size="icon"
           onClick={() => setMobileOpen((v) => !v)}
+          aria-label={mobileOpen ? 'Cerrar menu' : 'Abrir menu'}
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
@@ -120,6 +130,40 @@ export function Sidebar({ businessName }: { businessName: string }) {
           </div>
         </div>
       )}
+
+      {/* Mobile/tablet bottom nav */}
+      <nav
+        aria-label="Navegacion principal"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/80 bg-background/95 backdrop-blur-sm"
+        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="grid grid-cols-5 gap-1 px-2 pt-2">
+          {BOTTOM_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+            const active =
+              href === '/dashboard'
+                ? pathname === '/dashboard'
+                : pathname.startsWith(href)
+
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                aria-label={label}
+                className={cn(
+                  'flex min-h-14 flex-col items-center justify-center rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  active
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                <span className="mt-1 text-[11px] leading-none font-medium">{label}</span>
+              </Link>
+            )
+          })}
+        </div>
+      </nav>
     </>
   )
 }

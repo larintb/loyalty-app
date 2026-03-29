@@ -26,6 +26,9 @@ export type UserRole = 'owner' | 'admin' | 'cashier'
 export type TransactionType = 'sale' | 'refund' | 'exchange'
 export type PointsLedgerType = 'earn' | 'redeem' | 'expire' | 'adjust' | 'welcome'
 export type FinanceType = 'income' | 'expense'
+export type FinancePeriodType = 'week' | 'month'
+export type FinancePeriodStatus = 'open' | 'closed'
+export type FinanceResetMode = 'carry_over' | 'zero_base'
 export type ChurnRisk = 'high' | 'medium' | 'low'
 
 // ─── Rows (lo que devuelve Supabase) ─────────────────────────────────────────
@@ -126,12 +129,31 @@ export type FinanceEntryRow = {
   business_id: string
   staff_id: string | null
   transaction_id: string | null
+  period_id: string | null
   type: FinanceType
   category: string
   amount: number
   description: string | null
   date: string
+  locked: boolean
   receipt_url: string | null
+  created_at: string
+}
+
+export type FinancePeriodRow = {
+  id: string
+  business_id: string
+  period_type: FinancePeriodType
+  period_start: string
+  period_end: string
+  status: FinancePeriodStatus
+  opening_balance: number
+  total_income: number
+  total_expense: number
+  closing_balance: number
+  reset_mode: FinanceResetMode
+  closed_by: string | null
+  closed_at: string | null
   created_at: string
 }
 
@@ -198,12 +220,29 @@ export type FinanceEntryInsert = {
   business_id: string
   staff_id?: string | null
   transaction_id?: string | null
+  period_id?: string | null
   type: FinanceType
   category: string
   amount: number
   description?: string | null
   date?: string
+  locked?: boolean
   receipt_url?: string | null
+}
+
+export type FinancePeriodInsert = {
+  business_id: string
+  period_type: FinancePeriodType
+  period_start: string
+  period_end: string
+  status?: FinancePeriodStatus
+  opening_balance?: number
+  total_income?: number
+  total_expense?: number
+  closing_balance?: number
+  reset_mode?: FinanceResetMode
+  closed_by?: string | null
+  closed_at?: string | null
 }
 
 // ─── View Rows ────────────────────────────────────────────────────────────────
@@ -310,6 +349,12 @@ export type Database = {
         Update: Partial<FinanceEntryInsert>
         Relationships: []
       }
+      finance_periods: {
+        Row: FinancePeriodRow
+        Insert: FinancePeriodInsert
+        Update: Partial<FinancePeriodInsert>
+        Relationships: []
+      }
     }
     Views: {
       v_customer_clv: { Row: CustomerCLV; Relationships: [] }
@@ -331,5 +376,6 @@ export type Customer = CustomerRow
 export type Transaction = TransactionRow
 export type PointsLedger = PointsLedgerRow
 export type FinanceEntry = FinanceEntryRow
+export type FinancePeriod = FinancePeriodRow
 export type StaffMember = StaffMemberRow
 export type SubscriptionPlan = SubscriptionPlanRow
