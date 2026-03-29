@@ -1,0 +1,51 @@
+services:
+  # Aplicación Next.js principal
+  - type: web
+    name: puntaje-app
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_WEBHOOK_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_MP_PUBLIC_KEY
+        sync: false
+      - key: META_WA_PHONE_NUMBER_ID
+        sync: false
+      - key: META_WA_ACCESS_TOKEN
+        sync: false
+      - key: META_WA_WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+
+  # Cron job: verificar suscripciones vencidas (diario a las 3am UTC / 9pm MX)
+  - type: cron
+    name: puntaje-check-subscriptions
+    runtime: node
+    schedule: "0 3 * * *"
+    buildCommand: npm install
+    startCommand: >
+      curl -s -o /dev/null -w "%{http_code}"
+      -H "Authorization: Bearer $CRON_SECRET"
+      $NEXT_PUBLIC_APP_URL/api/cron/check-subscriptions
+    envVars:
+      - key: CRON_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
