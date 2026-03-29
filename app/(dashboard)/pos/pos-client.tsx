@@ -115,9 +115,13 @@ export function POSClient({
     setShowRegister(false)
   }
 
-  async function handleSendWhatsApp() {
+  async function handleSendWhatsApp(newBalance?: number) {
     if (!saleResult?.customerPhone || !saleResult.customerName) return
     setWaSending(true)
+    
+    // Si hay un nuevo balance (por canje), actualizar el saleResult
+    const pointsBalance = newBalance ?? saleResult.newBalance
+    
     const result = await sendWhatsAppTicket({
       transactionId: saleResult.transactionId,
       customerPhone: saleResult.customerPhone,
@@ -126,11 +130,15 @@ export function POSClient({
       total: saleResult.total,
       discountByPoints: saleResult.discountByPoints,
       pointsEarned: saleResult.pointsEarned,
-      pointsBalance: saleResult.newBalance,
+      pointsBalance: pointsBalance,
     })
     setWaSending(false)
     if (result.success) {
       setWaSent(true)
+      // Si fue un resend por canje, mostrar toast informativo
+      if (newBalance !== undefined) {
+        toast.success('Ticket actualizado enviado por WhatsApp')
+      }
     } else {
       toast.error(result.error ?? 'No se pudo enviar el WhatsApp.')
     }
@@ -200,7 +208,7 @@ export function POSClient({
                   variant="outline"
                   className="w-full gap-2 transition-all duration-300"
                   size="lg"
-                  onClick={handleSendWhatsApp}
+                  onClick={() => handleSendWhatsApp()}
                   disabled={waSending || waSent}
                 >
                   {waSent ? (
@@ -359,6 +367,20 @@ export function POSClient({
               products={redeemableProducts} 
               customerPoints={customer.total_points} 
               customerId={customer.id}
+              onRedemptionSuccess={(newBalance) => {
+                // Actualizar puntos del cliente cuando se canjea un producto
+                setCustomer(prev => prev ? { ...prev, total_points: newBalance } : null);
+                
+                // Si hay una venta activa, resendear WhatsApp automáticamente con nuevos puntos
+                if (saleResult) {
+                  const sale = saleResult as SaleSuccess
+                  if (sale.customerPhone && sale.customerName) {
+                    setTimeout(() => {
+                      handleSendWhatsApp(newBalance);
+                    }, 500);
+                  }
+                }
+              }}
             />
           </CardContent>
         </Card>

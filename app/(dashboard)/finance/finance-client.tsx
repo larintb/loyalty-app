@@ -27,9 +27,10 @@ type Props = {
   entries: FinanceEntryView[]
   period: FinancePeriodView | null
   summary: { income: number; expense: number; profit: number }
+  disableClosing?: boolean
 }
 
-export function FinanceClient({ entries: initialEntries, period, summary }: Props) {
+export function FinanceClient({ entries: initialEntries, period, summary, disableClosing = false }: Props) {
   const router = useRouter()
   const [entries, setEntries] = useState<FinanceEntryView[]>(initialEntries)
   const [open, setOpen] = useState(false)
@@ -117,6 +118,10 @@ export function FinanceClient({ entries: initialEntries, period, summary }: Prop
   }
 
   function handleCloseMonth() {
+    if (disableClosing) {
+      toast.info('Cierre de mes deshabilitado por ahora.')
+      return
+    }
     startTransition(async () => {
       const result = await closeFinanceMonth(period?.month)
       if (result.error) {
@@ -129,6 +134,10 @@ export function FinanceClient({ entries: initialEntries, period, summary }: Prop
   }
 
   function handleOpenNextMonth() {
+    if (disableClosing) {
+      toast.info('Apertura de mes deshabilitada por ahora.')
+      return
+    }
     startTransition(async () => {
       const result = await openNextFinanceMonth(period?.month, resetMode)
       if (result.error) {

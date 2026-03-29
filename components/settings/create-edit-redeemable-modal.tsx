@@ -1,4 +1,6 @@
 'use client'
+'use client'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'

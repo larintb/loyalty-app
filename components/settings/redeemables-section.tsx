@@ -130,8 +130,8 @@ export function RedeemablesSection({
                 </div>
               </div>
 
-              {/* Acciones - Siempre visibles en mobile, hover en desktop */}
-              <div className="flex items-center gap-1.5 ml-2 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
+              {/* Acciones - Siempre visibles */}
+              <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
                 <Button
                   onClick={() => {
                     setEditingProduct(product)

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { POSClient } from './pos-client'
 import type { RedeemableProductRow } from '@/types/database'
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export default async function POSPage() {
   const supabase = await createClient()
 

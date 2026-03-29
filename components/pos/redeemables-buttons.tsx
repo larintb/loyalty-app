@@ -13,11 +13,12 @@ interface RedeemablesButtonsProps {
   products: RedeemableProductRow[];
   customerPoints: number;
   customerId: string;
+  onRedemptionSuccess?: (updatedBalance: number) => void;
 }
 
 type RedemptionStatus = 'idle' | 'validating' | 'processing' | 'success' | 'error';
 
-export function RedeemablesButtons({ products, customerPoints, customerId }: RedeemablesButtonsProps) {
+export function RedeemablesButtons({ products, customerPoints, customerId, onRedemptionSuccess }: RedeemablesButtonsProps) {
   const [selectedProduct, setSelectedProduct] = useState<RedeemableProductRow | null>(null);
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<RedemptionStatus>('idle');
@@ -72,6 +73,13 @@ export function RedeemablesButtons({ products, customerPoints, customerId }: Red
         toast.success('Producto canjeado', {
           description: `Se debitaron ${selectedProduct.points_cost} puntos`,
         });
+
+        // Llamar callback con nuevo balance
+        if (result.redemption?.new_balance && onRedemptionSuccess) {
+          setTimeout(() => {
+            onRedemptionSuccess(result.redemption.new_balance);
+          }, 500);
+        }
 
         // Cerrar modal después de 2 segundos
         setTimeout(() => {

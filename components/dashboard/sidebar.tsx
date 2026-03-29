@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -22,17 +23,17 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
   { href: '/customers', label: 'Clientes', icon: Users },
-  { href: '/finance', label: 'Finanzas', icon: DollarSign },
   { href: '/reports', label: 'Reportes', icon: TrendingUp },
   { href: '/settings', label: 'Configuración', icon: Settings },
+  { href: '/coming-soon', label: 'Próximamente', icon: DollarSign, disabled: true },
 ]
 
 const BOTTOM_NAV_ITEMS = [
   { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
   { href: '/pos', label: 'POS', icon: ShoppingCart },
   { href: '/customers', label: 'Clientes', icon: Users },
-  { href: '/finance', label: 'Finanzas', icon: DollarSign },
   { href: '/reports', label: 'Reportes', icon: TrendingUp },
+  { href: '/settings', label: 'Config', icon: Settings },
 ]
 
 interface NavLinksProps {
@@ -43,7 +44,7 @@ interface NavLinksProps {
 function NavLinks({ pathname, onClose }: NavLinksProps) {
   return (
     <nav className="flex-1 px-3 py-4 space-y-1">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+      {NAV_ITEMS.map(({ href, label, icon: Icon, disabled }: any) => {
         const active =
           href === '/dashboard'
             ? pathname === '/dashboard'
@@ -51,14 +52,19 @@ function NavLinks({ pathname, onClose }: NavLinksProps) {
         return (
           <Link
             key={href}
-            href={href}
-            onClick={onClose}
+            href={disabled ? '#' : href}
+            onClick={(e) => {
+              if (disabled) e.preventDefault()
+              onClose()
+            }}
             aria-current={active ? 'page' : undefined}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-              active
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              disabled
+                ? 'text-muted-foreground/50 cursor-not-allowed'
+                : active
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />

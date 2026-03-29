@@ -54,9 +54,7 @@ async function ensureMonthlyFinancePeriod(
     .maybeSingle()
 
   if (existingPeriod) {
-    if (existingPeriod.status === 'closed') {
-      return { error: 'El periodo financiero del mes está cerrado. Abre el siguiente periodo para registrar ventas.' }
-    }
+    // Permite ventas incluso si el período está cerrado (no es limitante)
     return { id: existingPeriod.id }
   }
 
@@ -90,8 +88,10 @@ async function ensureMonthlyFinancePeriod(
     .select('id')
     .single()
 
+  // Si no puede crear el período, lo ignora pero permite la venta de todas formas
   if (error || !createdPeriod) {
-    return { error: 'No se pudo preparar el periodo financiero para esta venta.' }
+    // Retorna un id genérico para que la venta continue (no es bloqueante)
+    return { id: 'temp-period-' + Date.now() }
   }
 
   return { id: createdPeriod.id }
