@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from '@/lib/supabase/server'
+import { sendTextMessage } from '@/lib/whatsapp/client'
 import type {
   RedeemableProductInsert,
   RedeemableProductRow,
@@ -284,6 +285,14 @@ export async function redeemProduct(
     return { error: validation.reason, redemption: null }
   }
 
+  // Obtener nombre del producto para notificación
+  const { data: product } = await supabase
+    .from('redeemable_products' as any)
+    .select('name')
+    .eq('id', productId)
+    .eq('business_id', businessId)
+    .maybeSingle()
+
   // Ejecutar canje usando la función PostgreSQL
   const { data, error } = await supabase
     .rpc('execute_redemption' as any, {
@@ -304,6 +313,43 @@ export async function redeemProduct(
     return { error: result.error_message, redemption: null }
   }
 
+  let whatsappSent = false
+  let whatsappError: string | null = null
+
+  // Intentar enviar WhatsApp sin bloquear el canje si falla
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('name, phone')
+    .eq('id', customerId)
+    .eq('business_id', businessId)
+    .maybeSingle()
+
+  if (customer?.phone && customer?.name) {
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('name')
+      .eq('id', businessId)
+      .maybeSingle()
+
+    const businessName = business?.name ?? 'Tu negocio'
+    const productName = (product as any)?.name ?? 'Producto canjeable'
+    const pointsCost = validation.product?.pointsCost ?? 0
+    const message =
+      `🎁 *${businessName}*\n` +
+      `Hola ${customer.name} 👋\n\n` +
+      `Canje realizado: *${productName}*\n` +
+      `Puntos usados: -${pointsCost}\n` +
+      `Saldo actual: ${result.new_balance} pts\n\n` +
+      '¡Gracias por tu preferencia! 🙌'
+
+    const waResult = await sendTextMessage(customer.phone, message)
+    whatsappSent = waResult.success
+    if (!waResult.success) {
+      whatsappError = waResult.error
+      console.error('[redeemProduct] Error enviando WhatsApp:', waResult.error)
+    }
+  }
+
   return {
     error: null,
     redemption: {
@@ -311,6 +357,8 @@ export async function redeemProduct(
       product_id: productId,
       points_deducted: validation.product?.pointsCost || 0,
       new_balance: result.new_balance,
+      whatsapp_sent: whatsappSent,
+      whatsapp_error: whatsappError,
     },
   }
 }

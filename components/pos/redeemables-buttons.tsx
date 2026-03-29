@@ -74,10 +74,17 @@ export function RedeemablesButtons({ products, customerPoints, customerId, onRed
           description: `Se debitaron ${selectedProduct.points_cost} puntos`,
         });
 
-        // Llamar callback con nuevo balance
-        if (result.redemption?.new_balance && onRedemptionSuccess) {
+        if (result.redemption?.whatsapp_sent) {
+          toast.success('mensaje enviado');
+        } else if (result.redemption?.whatsapp_error) {
+          toast.error(result.redemption.whatsapp_error);
+        }
+
+        // Llamar callback con nuevo balance (incluye saldo 0)
+        const updatedBalance = result.redemption?.new_balance;
+        if (typeof updatedBalance === 'number' && onRedemptionSuccess) {
           setTimeout(() => {
-            onRedemptionSuccess(result.redemption.new_balance);
+            onRedemptionSuccess(updatedBalance);
           }, 500);
         }
 
@@ -233,7 +240,7 @@ export function RedeemablesButtons({ products, customerPoints, customerId, onRed
               {/* Error si existe */}
               {validationError && (
                 <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                   <div className="text-sm text-red-700">{validationError}</div>
                 </div>
               )}
