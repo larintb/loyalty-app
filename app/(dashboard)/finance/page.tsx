@@ -1,4 +1,4 @@
-import { getFinanceEntries, type FinanceEntryView } from '@/actions/finance'
+import { getFinanceEntries } from '@/actions/finance'
 import { FinanceClient } from './finance-client'
 
 export default async function FinancePage() {

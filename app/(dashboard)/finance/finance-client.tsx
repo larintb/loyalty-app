@@ -18,10 +18,9 @@ const EXPENSE_CATEGORIES = ['renta', 'insumos', 'nómina', 'servicios', 'marketi
 type Props = {
   entries: FinanceEntryView[]
   summary: { income: number; expense: number; profit: number }
-  month: string
 }
 
-export function FinanceClient({ entries: initialEntries, summary, month }: Props) {
+export function FinanceClient({ entries: initialEntries, summary }: Props) {
   const [entries, setEntries] = useState<FinanceEntryView[]>(initialEntries)
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()

@@ -11,11 +11,6 @@ type ActionState = { error: string } | null
 export async function searchCustomerByPhone(phone: string) {
   const supabase = await createClient()
 
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('id')
-    .maybeSingle()
-
   // Obtener el business_id del usuario actual
   const businessId = await getBusinessId(supabase)
   if (!businessId) return null

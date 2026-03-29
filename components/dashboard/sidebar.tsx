@@ -27,11 +27,13 @@ const NAV_ITEMS = [
   { href: '/settings', label: 'Configuración', icon: Settings },
 ]
 
-export function Sidebar({ businessName }: { businessName: string }) {
-  const pathname = usePathname()
-  const [mobileOpen, setMobileOpen] = useState(false)
+interface NavLinksProps {
+  pathname: string
+  onClose: () => void
+}
 
-  const NavLinks = () => (
+function NavLinks({ pathname, onClose }: NavLinksProps) {
+  return (
     <nav className="flex-1 px-3 py-4 space-y-1">
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active =
@@ -42,7 +44,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
           <Link
             key={href}
             href={href}
-            onClick={() => setMobileOpen(false)}
+            onClick={onClose}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               active
@@ -57,6 +59,11 @@ export function Sidebar({ businessName }: { businessName: string }) {
       })}
     </nav>
   )
+}
+
+export function Sidebar({ businessName }: { businessName: string }) {
+  const pathname = usePathname()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
     <>
@@ -66,7 +73,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
           <p className="font-bold text-base truncate">{businessName}</p>
           <p className="text-xs text-muted-foreground">Puntaje</p>
         </div>
-        <NavLinks />
+        <NavLinks pathname={pathname} onClose={() => setMobileOpen(false)} />
         <div className="px-3 py-4 border-t">
           <form action={logout}>
             <Button
@@ -97,7 +104,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-30 bg-background flex flex-col pt-16">
-          <NavLinks />
+          <NavLinks pathname={pathname} onClose={() => setMobileOpen(false)} />
           <div className="px-3 py-4 border-t">
             <form action={logout}>
               <Button

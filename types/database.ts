@@ -178,6 +178,9 @@ export type TransactionInsert = {
   discount_by_points?: number
   total: number
   items?: TransactionItem[]
+  ticket_number?: string | null
+  ticket_sent_via?: string[] | null
+  ticket_url?: string | null
   notes?: string | null
 }
 

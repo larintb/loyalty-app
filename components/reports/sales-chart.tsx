@@ -24,7 +24,13 @@ function formatDate(dateStr: string, totalDays: number): string {
   return day === 1 || day === 8 || day === 15 || day === 22 ? `${day} ${SHORT_MONTHS[month - 1]}` : ''
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: Array<{ value: number; name: string }>
+  label?: string
+}
+
+function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null
   const [, month, day] = label.split('-').map(Number)
   return (

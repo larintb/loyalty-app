@@ -8,7 +8,6 @@ import { PointsDisplay } from '@/components/pos/points-display'
 import { RegisterModal } from '@/components/pos/register-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { createSale, sendWhatsAppTicket } from '@/actions/transactions'
@@ -90,7 +89,7 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
     })
   }
 
-  async function handleRegistered(customerId: string) {
+  async function handleRegistered() {
     const found = await searchCustomerByPhone(registerPhone)
     if (found) {
       setCustomer(found)
