@@ -26,12 +26,18 @@ function formatDate(dateStr: string, totalDays: number): string {
 
 interface CustomTooltipProps {
   active?: boolean
-  payload?: Array<{ value: number; name: string }>
+  payload?: Array<{
+    value: number
+    name: string
+    payload: {
+      count: number
+    }
+  }>
   label?: string
 }
 
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null
+  if (!active || !payload?.length || typeof label !== 'string') return null
   const [, month, day] = label.split('-').map(Number)
   return (
     <div className="bg-background border rounded-lg shadow-lg px-3 py-2 text-sm">

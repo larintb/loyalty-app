@@ -1,15 +1,10 @@
-// Meta WhatsApp Cloud API
-// Docs: https://developers.facebook.com/docs/whatsapp/cloud-api/messages
-// Tier gratuito: 1,000 conversaciones/mes con usuarios que te escriben primero
-// Conversaciones iniciadas por negocio (tickets): ~$0.05 USD c/u
+// Whapi Cloud API
+// Docs: https://whapi.cloud/
 
 import { normalizePhone } from '@/lib/utils/phone'
 
-const META_API_VERSION = 'v19.0'
-const BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`
-
-const PHONE_NUMBER_ID = process.env.META_WA_PHONE_NUMBER_ID!
-const ACCESS_TOKEN = process.env.META_WA_ACCESS_TOKEN!
+const BASE_URL = (process.env.WHAPI_API_URL ?? 'https://gate.whapi.cloud').replace(/\/$/, '')
+const ACCESS_TOKEN = process.env.WHAPI_TOKEN
 
 type SendTextResult =
   | { success: true; messageId: string }
@@ -20,39 +15,49 @@ export async function sendTextMessage(
   to: string,
   text: string
 ): Promise<SendTextResult> {
-  // Normalizar número: quitar +, espacios, guiones → solo dígitos con código de país
-  const normalized = normalizePhone(to)
-
-  const res = await fetch(`${BASE_URL}/${PHONE_NUMBER_ID}/messages`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to: normalized,
-      type: 'text',
-      text: { body: text },
-    }),
-  })
-
-  const data = await res.json()
-
-  if (!res.ok) {
-    console.error('[WhatsApp] Error:', data)
+  if (!ACCESS_TOKEN) {
     return {
       success: false,
-      error: data?.error?.message ?? 'Error desconocido de WhatsApp API',
+      error: 'Falta WHAPI_TOKEN en variables de entorno.',
     }
   }
 
-  return { success: true, messageId: data.messages?.[0]?.id }
+  // Normalizar número: quitar +, espacios, guiones -> solo dígitos con código de país
+  const normalized = normalizePhone(to)
+  const recipients = [`${normalized}@s.whatsapp.net`, normalized]
+  let lastError = 'Error desconocido de Whapi'
+
+  for (const recipient of recipients) {
+    const res = await fetch(`${BASE_URL}/messages/text`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: recipient,
+        body: text,
+      }),
+    })
+
+    const data: unknown = await res.json().catch(() => ({}))
+
+    if (res.ok) {
+      return {
+        success: true,
+        messageId: getWhapiMessageId(data) ?? `sent:${recipient}`,
+      }
+    }
+
+    const whapiError = getWhapiError(data)
+    lastError = whapiError ?? `Error HTTP ${res.status} de Whapi`
+    console.error('[Whapi] Error:', data)
+  }
+
+  return { success: false, error: lastError }
 }
 
 // Enviar ticket como mensaje de texto formateado
-// (usar template aprobado por Meta en producción para mensajes iniciados por negocio)
 export async function sendTicketMessage(params: {
   to: string
   businessName: string
@@ -100,6 +105,37 @@ export async function sendTicketMessage(params: {
     `¡Gracias por tu preferencia! 🙌`
 
   return sendTextMessage(to, message)
+}
+
+function getWhapiMessageId(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null
+  const record = data as Record<string, unknown>
+
+  if (typeof record.id === 'string') return record.id
+
+  const message = record.message
+  if (message && typeof message === 'object') {
+    const messageId = (message as Record<string, unknown>).id
+    if (typeof messageId === 'string') return messageId
+  }
+
+  return null
+}
+
+function getWhapiError(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null
+  const record = data as Record<string, unknown>
+
+  const directMessage = record.message
+  if (typeof directMessage === 'string') return directMessage
+
+  const errorObj = record.error
+  if (errorObj && typeof errorObj === 'object') {
+    const errorMessage = (errorObj as Record<string, unknown>).message
+    if (typeof errorMessage === 'string') return errorMessage
+  }
+
+  return null
 }
 
 function formatDate(date: Date): string {

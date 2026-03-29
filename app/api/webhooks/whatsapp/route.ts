@@ -1,26 +1,31 @@
-// Meta requiere este endpoint para verificar el webhook al configurarlo
-// GET: Meta llama con hub.challenge y espera que lo devuelvas
-// POST: Meta envía mensajes entrantes (no los procesamos por ahora)
+// Webhook para eventos de WhatsApp via Whapi.
+// Whapi no requiere el flujo hub.challenge de Meta.
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-
-  const mode = searchParams.get('hub.mode')
-  const token = searchParams.get('hub.verify_token')
-  const challenge = searchParams.get('hub.challenge')
-
-  if (
-    mode === 'subscribe' &&
-    token === process.env.META_WA_WEBHOOK_VERIFY_TOKEN
-  ) {
-    return new Response(challenge, { status: 200 })
-  }
-
-  return new Response('Forbidden', { status: 403 })
+export async function GET() {
+  return Response.json({ status: 'ok', provider: 'whapi' })
 }
 
-export async function POST() {
-  // Por ahora solo confirmamos recepción
-  // Aquí podrías procesar mensajes entrantes (respuestas de clientes)
-  return Response.json({ status: 'ok' })
+export async function POST(request: Request) {
+  const configuredSecret = process.env.WHAPI_WEBHOOK_SECRET
+  const { searchParams } = new URL(request.url)
+
+  const bearer = request.headers
+    .get('authorization')
+    ?.replace(/^Bearer\s+/i, '')
+
+  const headerSecret = request.headers.get('x-webhook-secret')
+  const querySecret = searchParams.get('token')
+
+  if (
+    configuredSecret &&
+    configuredSecret !== bearer &&
+    configuredSecret !== headerSecret &&
+    configuredSecret !== querySecret
+  ) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  // Reservado para procesar mensajes entrantes/estados de entrega en el futuro.
+  await request.json().catch(() => null)
+  return Response.json({ status: 'ok', provider: 'whapi' })
 }

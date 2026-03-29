@@ -21,7 +21,6 @@ export default async function FinancePage() {
       <FinanceClient
         entries={entries}
         summary={{ income, expense, profit: income - expense }}
-        month={month}
       />
     </div>
   )
