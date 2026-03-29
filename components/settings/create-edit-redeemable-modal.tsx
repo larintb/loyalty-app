@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -159,9 +160,9 @@ export function CreateEditRedeemableModal({
 
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="basic">Básico</TabsTrigger>
-            <TabsTrigger value="design">Diseño</TabsTrigger>
-            <TabsTrigger value="advanced">Config</TabsTrigger>
+            <TabsTrigger value="basic" disabled={isPending}>Básico</TabsTrigger>
+            <TabsTrigger value="design" disabled={isPending}>Diseño</TabsTrigger>
+            <TabsTrigger value="advanced" disabled={isPending}>Config</TabsTrigger>
           </TabsList>
 
           {/* TAB 1: INFORMACIÓN BÁSICA */}
@@ -389,7 +390,16 @@ export function CreateEditRedeemableModal({
             disabled={isPending}
             className="flex-1 bg-green-600 hover:bg-green-700"
           >
-            {isPending ? 'Guardando...' : editingProduct ? 'Actualizar' : 'Crear producto'}
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Guardando...
+              </>
+            ) : editingProduct ? (
+              'Actualizar'
+            ) : (
+              'Crear producto'
+            )}
           </Button>
         </div>
       </DialogContent>

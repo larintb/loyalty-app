@@ -35,7 +35,7 @@ type BusinessData = {
 
 export function SettingsClient({ business }: { business: BusinessData }) {
   return (
-    <div className="max-w-2xl space-y-8 page-enter motion-stagger">
+    <div className="mx-auto max-w-2xl space-y-8 page-enter motion-stagger">
       <BusinessSection business={business} />
       <PointsSection config={business.points_config} />
       <RedeemablesSection initialProducts={business.redeemable_products} />

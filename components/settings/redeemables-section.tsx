@@ -102,12 +102,12 @@ export function RedeemablesSection({
           {products.map((product) => (
             <div
               key={product.id}
-              className="flex items-center justify-between rounded-xl border bg-card p-4 hover:bg-muted/40 transition-colors group"
+              className="flex items-center justify-between rounded-xl border bg-card p-4 transition-all duration-200 group hover:bg-muted/40 active:scale-95 cursor-pointer"
             >
               {/* Información del producto */}
-              <div className="flex items-center gap-3 flex-1">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0 transition-transform group-hover:scale-110"
                   style={{ backgroundColor: product.color + '20' }}
                 >
                   {product.emoji || '🎁'}
@@ -130,8 +130,8 @@ export function RedeemablesSection({
                 </div>
               </div>
 
-              {/* Acciones */}
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Acciones - Siempre visibles en mobile, hover en desktop */}
+              <div className="flex items-center gap-1.5 ml-2 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
                 <Button
                   onClick={() => {
                     setEditingProduct(product)
@@ -139,21 +139,23 @@ export function RedeemablesSection({
                   }}
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-950"
+                  title="Editar producto"
                 >
-                  <Edit2 className="h-3.5 w-3.5" />
+                  <Edit2 className="h-3.5 w-3.5 text-blue-600" />
                 </Button>
                 <Button
                   onClick={() => handleDelete(product.id, product.name)}
                   disabled={isDeleting === product.id}
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                  className="h-8 w-8 p-0 hover:bg-red-100 dark:hover:bg-red-950"
+                  title="Eliminar producto"
                 >
                   {isDeleting === product.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
                   ) : (
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
                   )}
                 </Button>
               </div>
