@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import type { PointsConfig } from '@/types/database'
+import type { PointsConfig, RedeemableProductRow } from '@/types/database'
 
 export async function getBusinessSettings() {
   const supabase = await createClient()
@@ -14,7 +14,19 @@ export async function getBusinessSettings() {
     .eq('owner_id', user.id)
     .single()
 
-  return data
+  if (!data) return null
+
+  // También obtener productos canjeables
+  const { data: redeemables } = await supabase
+    .from('redeemable_products' as any)
+    .select('*')
+    .eq('business_id', data.id)
+    .order('created_at', { ascending: false })
+
+  return {
+    ...data,
+    redeemable_products: (redeemables || []) as unknown as RedeemableProductRow[],
+  }
 }
 
 export async function updateBusinessInfo(payload: {

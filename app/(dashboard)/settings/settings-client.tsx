@@ -19,8 +19,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { RedeemablesSection } from '@/components/settings/redeemables-section'
 import { updateBusinessInfo, updatePointsConfig } from '@/actions/settings'
-import type { PointsConfig } from '@/types/database'
+import type { PointsConfig, RedeemableProductRow } from '@/types/database'
 
 type BusinessData = {
   id: string
@@ -29,6 +30,7 @@ type BusinessData = {
   address: string | null
   email: string | null
   points_config: PointsConfig
+  redeemable_products: RedeemableProductRow[]
 }
 
 export function SettingsClient({ business }: { business: BusinessData }) {
@@ -36,6 +38,7 @@ export function SettingsClient({ business }: { business: BusinessData }) {
     <div className="max-w-2xl space-y-8 page-enter motion-stagger">
       <BusinessSection business={business} />
       <PointsSection config={business.points_config} />
+      <RedeemablesSection initialProducts={business.redeemable_products} />
     </div>
   )
 }
