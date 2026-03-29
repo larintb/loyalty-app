@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { POSClient } from './pos-client'
+import type { RedeemableProductRow } from '@/types/database'
 
 export default async function POSPage() {
   const supabase = await createClient()
@@ -18,6 +19,7 @@ export default async function POSPage() {
   // Si es staff
   let pointsConfig = business?.points_config
   let planStatus = business?.plan_status
+  let businessId = business?.id
 
   if (!business) {
     const { data: staff } = await supabase
@@ -27,6 +29,7 @@ export default async function POSPage() {
       .maybeSingle()
 
     if (staff?.business_id) {
+      businessId = staff.business_id
       const { data: biz } = await supabase
         .from('businesses')
         .select('points_config, plan_status')
@@ -48,10 +51,20 @@ export default async function POSPage() {
     )
   }
 
+  // Obtener productos canjeables
+  const { data: redeemables } = await supabase
+    .from('redeemable_products' as any)
+    .select('*')
+    .eq('business_id', businessId)
+    .eq('is_active', true)
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Punto de Venta</h1>
-      <POSClient pointsConfig={pointsConfig!} />
+      <POSClient 
+        pointsConfig={pointsConfig!} 
+        redeemableProducts={(redeemables as any as RedeemableProductRow[]) || []} 
+      />
     </div>
   )
 }

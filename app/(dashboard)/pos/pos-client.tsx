@@ -6,6 +6,7 @@ import { CheckCircle2, RotateCcw, MessageCircle, Check, Loader2 } from 'lucide-r
 import { PhoneSearch } from '@/components/pos/phone-search'
 import { PointsDisplay } from '@/components/pos/points-display'
 import { RegisterModal } from '@/components/pos/register-modal'
+import { RedeemablesButtons } from '@/components/pos/redeemables-buttons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { createSale, sendWhatsAppTicket } from '@/actions/transactions'
 import { searchCustomerByPhone } from '@/actions/customers'
 import { calculateEarnedPoints } from '@/lib/points/calculator'
-import type { PointsConfig } from '@/types/database'
+import type { PointsConfig, RedeemableProductRow } from '@/types/database'
 
 type CustomerPreview = {
   id: string
@@ -36,7 +37,13 @@ type SaleSuccess = {
   newBalance: number
 }
 
-export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
+export function POSClient({ 
+  pointsConfig, 
+  redeemableProducts = [] 
+}: { 
+  pointsConfig: PointsConfig
+  redeemableProducts?: RedeemableProductRow[]
+}) {
   const [customer, setCustomer] = useState<CustomerPreview | null>(null)
   const [totalInput, setTotalInput] = useState('')
   const [pointsToRedeem, setPointsToRedeem] = useState(0)
@@ -336,6 +343,22 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
                 setPointsToRedeem(pts)
                 setDiscountByPoints(disc)
               }}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 4. Productos canjeables */}
+      {customer && redeemableProducts.length > 0 && (
+        <Card className="lift-hover border-purple-200 dark:border-purple-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">4. Productos canjeables</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RedeemablesButtons 
+              products={redeemableProducts} 
+              customerPoints={customer.total_points} 
+              customerId={customer.id}
             />
           </CardContent>
         </Card>
