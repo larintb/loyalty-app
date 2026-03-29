@@ -24,7 +24,7 @@ export type TransactionItem = {
 export type PlanStatus = 'trialing' | 'active' | 'past_due' | 'cancelled'
 export type UserRole = 'owner' | 'admin' | 'cashier'
 export type TransactionType = 'sale' | 'refund' | 'exchange'
-export type PointsLedgerType = 'earn' | 'redeem' | 'expire' | 'adjust' | 'welcome'
+export type PointsLedgerType = 'earn' | 'redeem' | 'expire' | 'adjust' | 'welcome' | 'redeem_product'
 export type FinanceType = 'income' | 'expense'
 export type FinancePeriodType = 'week' | 'month'
 export type FinancePeriodStatus = 'open' | 'closed'
@@ -157,6 +157,37 @@ export type FinancePeriodRow = {
   created_at: string
 }
 
+export type RedeemableProductRow = {
+  id: string
+  business_id: string
+  name: string
+  description: string | null
+  points_cost: number
+  color: string
+  icon_name: string
+  emoji: string | null
+  is_active: boolean
+  has_stock: boolean
+  stock_quantity: number | null
+  max_redeems_per_day: number | null
+  max_redeems_per_customer: number | null
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export type RedemptionRow = {
+  id: string
+  business_id: string
+  customer_id: string
+  redeemable_product_id: string
+  product_name: string
+  points_deducted: number
+  redeemed_by_user_id: string | null
+  notes: string | null
+  created_at: string
+}
+
 // ─── Inserts ──────────────────────────────────────────────────────────────────
 
 export type BusinessInsert = {
@@ -243,6 +274,32 @@ export type FinancePeriodInsert = {
   reset_mode?: FinanceResetMode
   closed_by?: string | null
   closed_at?: string | null
+}
+
+export type RedeemableProductInsert = {
+  business_id: string
+  name: string
+  description?: string | null
+  points_cost: number
+  color?: string
+  icon_name?: string
+  emoji?: string | null
+  is_active?: boolean
+  has_stock?: boolean
+  stock_quantity?: number | null
+  max_redeems_per_day?: number | null
+  max_redeems_per_customer?: number | null
+  created_by: string
+}
+
+export type RedemptionInsert = {
+  business_id: string
+  customer_id: string
+  redeemable_product_id: string
+  product_name: string
+  points_deducted: number
+  redeemed_by_user_id?: string | null
+  notes?: string | null
 }
 
 // ─── View Rows ────────────────────────────────────────────────────────────────
