@@ -10,11 +10,13 @@ type SendTextResult =
   | { success: true; messageId: string }
   | { success: false; error: string }
 
-// Enviar mensaje de texto simple
-export async function sendTextMessage(
+export type SendMessageResult = SendTextResult
+
+async function sendWhapiMessage(
   to: string,
-  text: string
-): Promise<SendTextResult> {
+  endpoint: 'text' | 'image',
+  payload: Record<string, unknown>
+): Promise<SendMessageResult> {
   if (!ACCESS_TOKEN) {
     return {
       success: false,
@@ -22,13 +24,12 @@ export async function sendTextMessage(
     }
   }
 
-  // Normalizar número: quitar +, espacios, guiones -> solo dígitos con código de país
   const normalized = normalizePhone(to)
   const recipients = [`${normalized}@s.whatsapp.net`, normalized]
   let lastError = 'Error desconocido de Whapi'
 
   for (const recipient of recipients) {
-    const res = await fetch(`${BASE_URL}/messages/text`, {
+    const res = await fetch(`${BASE_URL}/messages/${endpoint}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${ACCESS_TOKEN}`,
@@ -36,7 +37,7 @@ export async function sendTextMessage(
       },
       body: JSON.stringify({
         to: recipient,
-        body: text,
+        ...payload,
       }),
     })
 
@@ -55,6 +56,26 @@ export async function sendTextMessage(
   }
 
   return { success: false, error: lastError }
+}
+
+// Enviar mensaje de texto simple
+export async function sendTextMessage(
+  to: string,
+  text: string
+): Promise<SendTextResult> {
+  return sendWhapiMessage(to, 'text', { body: text })
+}
+
+// Enviar imagen con caption opcional
+export async function sendImageMessage(params: {
+  to: string
+  imageUrl: string
+  caption?: string
+}): Promise<SendMessageResult> {
+  return sendWhapiMessage(params.to, 'image', {
+    media: params.imageUrl,
+    caption: params.caption ?? '',
+  })
 }
 
 // Enviar ticket como mensaje de texto formateado
