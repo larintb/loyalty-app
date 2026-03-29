@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Manrope, Sora } from "next/font/google";
+import { Roboto, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const roboto = Roboto({
+  variable: "--font-roboto",
   subsets: ["latin"],
-});
-
-const sora = Sora({
-  variable: "--font-sora",
-  subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -30,7 +26,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${manrope.variable} ${sora.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${roboto.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
