@@ -28,6 +28,29 @@ export function PhoneSearch({ onCustomerFound, onCustomerCleared, onRegisterNew 
   const [customer, setCustomer] = useState<CustomerPreview | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  async function runSearch(rawPhone: string) {
+    const digits = rawPhone.replace(/\D/g, '')
+
+    if (digits.length < 10) {
+      setStatus('idle')
+      setCustomer(null)
+      onCustomerCleared()
+      return
+    }
+
+    setStatus('searching')
+    const result = await searchCustomerByPhone(digits)
+    if (result) {
+      setStatus('found')
+      setCustomer(result)
+      onCustomerFound(result)
+    } else {
+      setStatus('not_found')
+      setCustomer(null)
+      onCustomerCleared()
+    }
+  }
+
   useEffect(() => {
     const digits = phone.replace(/\D/g, '')
 
@@ -38,20 +61,9 @@ export function PhoneSearch({ onCustomerFound, onCustomerCleared, onRegisterNew 
       return
     }
 
-    setStatus('searching')
-
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
-      const result = await searchCustomerByPhone(digits)
-      if (result) {
-        setStatus('found')
-        setCustomer(result)
-        onCustomerFound(result)
-      } else {
-        setStatus('not_found')
-        setCustomer(null)
-        onCustomerCleared()
-      }
+      await runSearch(phone)
     }, 350)
 
     return () => {
@@ -68,7 +80,17 @@ export function PhoneSearch({ onCustomerFound, onCustomerCleared, onRegisterNew 
   }
 
   function formatPhone(value: string) {
-    const digits = value.replace(/\D/g, '').slice(0, 10)
+    const onlyDigits = value.replace(/\D/g, '')
+
+    // Permite pegar números con prefijo de país y los normaliza para visualización.
+    if (onlyDigits.startsWith('52')) {
+      const local = onlyDigits.slice(2, 12)
+      if (local.length <= 2) return local
+      if (local.length <= 6) return `(${local.slice(0, 2)}) ${local.slice(2)}`
+      return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`
+    }
+
+    const digits = onlyDigits.slice(0, 10)
     if (digits.length <= 2) return digits
     if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
@@ -76,27 +98,38 @@ export function PhoneSearch({ onCustomerFound, onCustomerCleared, onRegisterNew 
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={phone}
-          onChange={(e) => setPhone(formatPhone(e.target.value))}
-          placeholder="(55) 1234-5678"
-          className="pl-9 pr-9 text-lg h-12 font-mono"
-          type="tel"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="tel"
-          autoFocus
-        />
-        {phone && (
-          <button
-            onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={phone}
+            onChange={(e) => setPhone(formatPhone(e.target.value))}
+            placeholder="(55) 1234-5678"
+            className="pl-9 pr-9 text-lg h-12 font-mono"
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="tel"
+            autoFocus
+          />
+          {phone && (
+            <button
+              onClick={handleClear}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="xl:hidden h-12 gap-2 px-3"
+          onClick={() => runSearch(phone)}
+        >
+          <Search className="h-4 w-4" />
+          Buscar
+        </Button>
       </div>
 
       {/* Estado: buscando */}

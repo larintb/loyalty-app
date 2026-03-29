@@ -68,7 +68,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-60 md:flex-col border-r bg-background h-screen sticky top-0">
+      <aside className="hidden lg:flex lg:w-60 lg:flex-col border-r bg-background h-screen sticky top-0">
         <div className="px-4 py-5 border-b">
           <p className="font-bold text-base truncate">{businessName}</p>
           <p className="text-xs text-muted-foreground">Puntaje</p>
@@ -90,7 +90,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
       </aside>
 
       {/* Mobile top bar */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-background sticky top-0 z-40">
+      <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b bg-background sticky top-0 z-40">
         <p className="font-bold truncate max-w-[200px]">{businessName}</p>
         <Button
           variant="ghost"
@@ -103,7 +103,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-30 bg-background flex flex-col pt-16">
+        <div className="lg:hidden fixed inset-0 z-30 bg-background flex flex-col pt-16">
           <NavLinks pathname={pathname} onClose={() => setMobileOpen(false)} />
           <div className="px-3 py-4 border-t">
             <form action={logout}>

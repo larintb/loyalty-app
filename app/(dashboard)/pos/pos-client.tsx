@@ -55,6 +55,15 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
   const basePointsEarned = customer ? calculateEarnedPoints(finalTotal, pointsConfig) : 0
   const pointsEarned = basePointsEarned * multiplier
 
+  function normalizeAmountInput(value: string) {
+    const withDot = value.replace(/,/g, '.')
+    const sanitized = withDot.replace(/[^\d.]/g, '')
+    const [intPart = '', ...decimals] = sanitized.split('.')
+    const decimalPart = decimals.join('')
+    if (!decimals.length) return intPart
+    return `${intPart}.${decimalPart}`
+  }
+
   async function handleSale() {
     if (rawTotal <= 0) {
       toast.error('Ingresa el total del ticket.')
@@ -255,7 +264,7 @@ export function POSClient({ pointsConfig }: { pointsConfig: PointsConfig }) {
             <Input
               ref={totalRef}
               value={totalInput}
-              onChange={(e) => setTotalInput(e.target.value)}
+              onChange={(e) => setTotalInput(normalizeAmountInput(e.target.value))}
               onKeyDown={(e) => e.key === 'Enter' && handleSale()}
               placeholder="0.00"
               className="pl-7 text-2xl h-14 font-mono font-semibold"

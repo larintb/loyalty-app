@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Star, ShoppingBag } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatPhoneDisplay } from '@/lib/utils/phone'
@@ -22,7 +23,12 @@ type Customer = {
 
 export function CustomersClient({ customers }: { customers: Customer[] }) {
   const router = useRouter()
+  const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
+
+  function applySearch() {
+    setSearch(searchDraft.trim())
+  }
 
   const filtered = customers.filter((c) => {
     if (!search) return true
@@ -33,17 +39,29 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
   return (
     <div className="space-y-4">
       {/* Búsqueda */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o teléfono..."
-          className="pl-9"
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel"
-        />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && applySearch()}
+            placeholder="Buscar por nombre o teléfono..."
+            className="pl-9"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="xl:hidden gap-2"
+          onClick={applySearch}
+        >
+          <Search className="h-4 w-4" />
+          Buscar
+        </Button>
       </div>
 
       {/* Contador */}
