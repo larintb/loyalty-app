@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(ls \"C:/Users/vlpiz/Desktop/puntaje/loyalty-app/app/\\(dashboard\\)/customers/\")",
+      "Bash(ls \"C:/Users/vlpiz/Desktop/puntaje/loyalty-app/app/\\(dashboard\\)/reports/\")",
+      "Bash(grep -r \"sheet\\\\|Sheet\\\\|drawer\\\\|Drawer\" C:/Users/vlpiz/Desktop/puntaje/loyalty-app --include=*.tsx -l)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

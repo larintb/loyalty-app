@@ -25,7 +25,24 @@ async function sendWhapiMessage(
   }
 
   const normalized = normalizePhone(to)
-  const recipients = [`${normalized}@s.whatsapp.net`, normalized]
+
+  // Los números móviles mexicanos en WhatsApp llevan un "1" extra después del
+  // código de país: 52XXXXXXXXXX → 521XXXXXXXXXX. Probamos ambos formatos.
+  const mxAlternative =
+    normalized.startsWith('52') && normalized.length === 12
+      ? `521${normalized.slice(2)}`
+      : null
+
+  const candidates = mxAlternative
+    ? [
+        `${mxAlternative}@s.whatsapp.net`,
+        `${normalized}@s.whatsapp.net`,
+        mxAlternative,
+        normalized,
+      ]
+    : [`${normalized}@s.whatsapp.net`, normalized]
+
+  const recipients = candidates
   let lastError = 'Error desconocido de Whapi'
 
   for (const recipient of recipients) {
