@@ -33,7 +33,7 @@ function toIsoFromUnix(value?: number | null) {
   return new Date(value * 1000).toISOString()
 }
 
-function mapStripeStatusToPlanStatus(status: string | null | undefined): 'trialing' | 'active' | 'past_due' | 'cancelled' {
+function mapStripeStatusToPlanStatus(status: string | null | undefined): 'trialing' | 'active' | 'past_due' | 'cancelled' | 'cancelling' {
   if (!status) return 'past_due'
   if (status === 'trialing') return 'trialing'
   if (status === 'active') return 'active'
@@ -702,6 +702,7 @@ export async function cancelSubscription(reason?: string): Promise<BillingResult
       metadata: { stripe_subscription_id: stripeSubscriptionId },
     })
 
+    revalidatePath('/settings/billing')
     revalidatePath('/settings')
 
     return {
@@ -714,6 +715,84 @@ export async function cancelSubscription(reason?: string): Promise<BillingResult
       success: false,
       error: 'No se pudo cancelar la suscripción.',
     }
+  }
+}
+
+export async function createBillingPortalSession(): Promise<BillingResult> {
+  const context = await getBusinessContext(true)
+  if (!context) return { success: false, error: 'No autorizado.' }
+
+  if (!context.stripeCustomerId) {
+    return { success: false, error: 'No hay cliente de Stripe asociado a esta cuenta.' }
+  }
+
+  const stripe = getStripeClient()
+  const headersList = await headers()
+  const origin = headersList.get('origin') ?? headersList.get('host') ?? 'https://localhost:3000'
+  const returnUrl = `${origin.startsWith('http') ? origin : `https://${origin}`}/settings/billing?portal=return`
+
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: context.stripeCustomerId,
+      return_url: returnUrl,
+    })
+
+    return { success: true, url: session.url }
+  } catch {
+    return { success: false, error: 'No se pudo abrir el portal de facturación.' }
+  }
+}
+
+export async function syncSubscriptionFromStripe(): Promise<BillingResult & { cancelAtPeriodEnd?: boolean }> {
+  const context = await getBusinessContext(true)
+  if (!context) return { success: false, error: 'No autorizado.' }
+
+  if (!context.stripeCustomerId) return { success: true, cancelAtPeriodEnd: false }
+
+  const stripe = getStripeClient()
+  const admin = createAdminClient()
+
+  try {
+    const subs = await stripe.subscriptions.list({
+      customer: context.stripeCustomerId,
+      status: 'all',
+      limit: 5,
+    })
+
+    const activeSub = subs.data.find((s) =>
+      ['trialing', 'active', 'past_due'].includes(s.status)
+    )
+
+    if (!activeSub) {
+      // No active subscription in Stripe → mark as cancelled in DB
+      await (admin as any)
+        .from('businesses' as any)
+        .update({ plan_status: 'cancelled', stripe_subscription_id: null })
+        .eq('id', context.businessId)
+
+      revalidatePath('/settings/billing')
+      return { success: true, cancelAtPeriodEnd: false }
+    }
+
+    const subAny = activeSub as any
+    const cancelAtPeriodEnd: boolean = subAny.cancel_at_period_end === true
+
+    const planStatus = cancelAtPeriodEnd
+      ? 'cancelling'
+      : mapStripeStatusToPlanStatus(activeSub.status)
+
+    await (admin as any)
+      .from('businesses' as any)
+      .update({
+        plan_status: planStatus,
+        stripe_subscription_id: activeSub.id,
+      })
+      .eq('id', context.businessId)
+
+    revalidatePath('/settings/billing')
+    return { success: true, cancelAtPeriodEnd }
+  } catch {
+    return { success: false, error: 'Error al sincronizar con Stripe.' }
   }
 }
 

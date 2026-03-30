@@ -1,5 +1,6 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import { getPlanAccess } from '@/lib/plan-access'
 import { getCustomerProfile } from '@/actions/customers'
 import { formatPhoneDisplay } from '@/lib/utils/phone'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +13,9 @@ export default async function CustomerProfilePage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const access = await getPlanAccess()
+  if (!access.canAccess) redirect('/settings/billing')
+
   const { id } = await params
   const data = await getCustomerProfile(id)
   if (!data) notFound()

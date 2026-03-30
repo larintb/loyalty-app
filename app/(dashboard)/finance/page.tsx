@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { getPlanAccess } from '@/lib/plan-access'
 import { FEATURE_LABELS } from '@/lib/plans'
 import { PlanBanner, UpgradeWall } from '@/components/dashboard/plan-banner'
@@ -8,6 +9,9 @@ export default async function FinancePage() {
   const access = await getPlanAccess('finance')
 
   if (!access.canAccess) {
+    const hasSubscription = ['active', 'trialing', 'cancelling'].includes(access.planStatus ?? '')
+    if (!hasSubscription) redirect('/settings/billing')
+
     return (
       <div className="mx-auto max-w-2xl space-y-4 page-enter">
         <div>

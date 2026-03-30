@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { PLAN_DOT_COLOR, PLAN_ORDER } from '@/lib/plans'
-import { createCheckoutSession, updateSubscription } from '@/actions/billing'
+import { createBillingPortalSession, createCheckoutSession, updateSubscription } from '@/actions/billing'
 
 type BillingAccess = {
   isTrial: boolean
@@ -18,6 +18,7 @@ type BillingAccess = {
   planName: string | null
   planSlug: string | null
   planId: string | null
+  planStatus: string | null
 }
 
 type PlanRow = {
@@ -43,6 +44,7 @@ export function PlansGrid({ access, plans }: { access: BillingAccess; plans: Pla
   const [showRelativeCost, setShowRelativeCost] = useState(false)
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isOpeningPortal, startPortalTransition] = useTransition()
 
   const trialEnd = useMemo(() => {
     if (!access.trialEndsAt) return null
@@ -57,8 +59,8 @@ export function PlansGrid({ access, plans }: { access: BillingAccess; plans: Pla
     setPendingPlanId(plan.id)
 
     startTransition(async () => {
-      // Si ya tiene suscripción (activa o en trial) → actualizar en Stripe directamente
-      const hasExistingSubscription = Boolean(access.planId)
+      // Si ya tiene suscripción activa/trialing → actualizar en Stripe directamente
+      const hasExistingSubscription = ['active', 'trialing', 'past_due'].includes(access.planStatus ?? '')
 
       if (hasExistingSubscription) {
         const updateResult = await updateSubscription(plan.slug)
@@ -97,6 +99,17 @@ export function PlansGrid({ access, plans }: { access: BillingAccess; plans: Pla
     })
   }
 
+  function handleOpenPortal() {
+    startPortalTransition(async () => {
+      const result = await createBillingPortalSession()
+      if (result.success && typeof result.url === 'string') {
+        window.location.assign(result.url)
+      } else {
+        toast.error(typeof result.error === 'string' ? result.error : 'No se pudo abrir el portal de facturación.')
+      }
+    })
+  }
+
   return (
     <>
       {access.isTrial && (
@@ -115,23 +128,43 @@ export function PlansGrid({ access, plans }: { access: BillingAccess; plans: Pla
         </div>
       )}
 
-      {access.planName && (
+      {(access.planName || access.isTrial) && !['cancelled'].includes(access.planStatus ?? '') && (
         <div className="rounded-xl border bg-card px-5 py-4 flex items-center gap-4">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted shrink-0">
             <CreditCard className="h-5 w-5 text-muted-foreground" />
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Plan actual</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground">
+              {access.planStatus === 'cancelling' ? 'Suscripción cancelada' : 'Plan actual'}
+            </p>
             <div className="flex items-center gap-2">
-              <span className={cn('w-2 h-2 rounded-full', PLAN_DOT_COLOR[access.planSlug ?? ''] ?? 'bg-muted-foreground')} />
-              <p className="font-semibold">{access.planName}</p>
+              {access.planSlug && (
+                <span className={cn('w-2 h-2 rounded-full', PLAN_DOT_COLOR[access.planSlug] ?? 'bg-muted-foreground')} />
+              )}
+              <p className="font-semibold">{access.planName ?? 'Sin plan'}</p>
               {access.isTrial && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-700">
                   Trial
                 </Badge>
               )}
+              {access.planStatus === 'cancelling' && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-rose-300 text-rose-600">
+                  Acceso hasta fin de período
+                </Badge>
+              )}
             </div>
           </div>
+          {['trialing', 'active'].includes(access.planStatus ?? '') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0 text-xs"
+              onClick={handleOpenPortal}
+              disabled={isOpeningPortal}
+            >
+              {isOpeningPortal ? 'Abriendo...' : 'Gestionar suscripción'}
+            </Button>
+          )}
         </div>
       )}
 
@@ -154,13 +187,16 @@ export function PlansGrid({ access, plans }: { access: BillingAccess; plans: Pla
       <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
         {plans.map((plan) => {
           const features: string[] = Array.isArray(plan.features) ? (plan.features as string[]) : []
-          const isCurrent = plan.id === access.planId
+          const hasActiveSubscription = ['active', 'trialing', 'past_due'].includes(access.planStatus ?? '')
+          const isCurrent = plan.id === access.planId && hasActiveSubscription
           const isPopular = plan.slug === 'growth'
           const isGod = plan.slug === 'unlimited'
           const rank = PLAN_ORDER.indexOf(plan.slug as (typeof PLAN_ORDER)[number])
-          const currentRank = PLAN_ORDER.indexOf((access.planSlug ?? '') as (typeof PLAN_ORDER)[number])
+          const currentRank = hasActiveSubscription
+            ? PLAN_ORDER.indexOf((access.planSlug ?? '') as (typeof PLAN_ORDER)[number])
+            : -1
           const isUpgrade = rank > currentRank
-          const isDowngrade = rank < currentRank
+          const isDowngrade = currentRank >= 0 && rank < currentRank
 
           const cardCls = isCurrent
             ? 'border-primary bg-primary/5 shadow-sm'
@@ -284,6 +320,7 @@ export function PlansGrid({ access, plans }: { access: BillingAccess; plans: Pla
           )
         })}
       </div>
+
     </>
   )
 }

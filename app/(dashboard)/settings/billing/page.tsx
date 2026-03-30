@@ -2,12 +2,12 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPlanAccess } from '@/lib/plan-access'
-import { syncCheckoutSession } from '@/actions/billing'
+import { syncCheckoutSession, syncSubscriptionFromStripe } from '@/actions/billing'
 import { PlansGrid } from './plans-grid'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 type BillingPageProps = {
-  searchParams?: Promise<{ checkout?: string; session_id?: string }>
+  searchParams?: Promise<{ checkout?: string; session_id?: string; portal?: string }>
 }
 
 export default async function BillingPage({ searchParams }: BillingPageProps) {
@@ -18,6 +18,13 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const params = searchParams ? await searchParams : undefined
   const checkoutStatus = params?.checkout
   const checkoutSessionId = params?.session_id
+  const isPortalReturn = params?.portal === 'return'
+
+  // Sync real subscription state from Stripe when returning from portal
+  if (isPortalReturn) {
+    await syncSubscriptionFromStripe()
+    redirect('/settings/billing')
+  }
 
   let checkoutSyncError: string | null = null
   if (checkoutStatus === 'success' && checkoutSessionId) {

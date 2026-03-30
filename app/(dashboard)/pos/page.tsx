@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getPlanAccess } from '@/lib/plan-access'
 import { POSClient } from './pos-client'
 import type { RedeemableProductRow } from '@/types/database'
 
@@ -9,6 +10,9 @@ export default async function POSPage() {
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const access = await getPlanAccess()
+  if (!access.canAccess) redirect('/settings/billing')
 
   // Obtener config de puntos del negocio
   const { data: business } = await supabase

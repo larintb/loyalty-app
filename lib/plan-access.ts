@@ -83,7 +83,7 @@ export async function getPlanAccess(feature?: string): Promise<PlanAccess> {
       canAccess = planNormallyIncludes
     }
   } else {
-    canAccess = isTrial || (business as any).plan_status === 'active'
+    canAccess = isTrial || ['active', 'cancelling'].includes((business as any).plan_status)
   }
 
   return {

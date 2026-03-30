@@ -1,7 +1,12 @@
+import { redirect } from 'next/navigation'
+import { getPlanAccess } from '@/lib/plan-access'
 import { getCustomers } from '@/actions/customers'
 import { CustomersClient } from './customers-client'
 
 export default async function CustomersPage() {
+  const access = await getPlanAccess()
+  if (!access.canAccess) redirect('/settings/billing')
+
   const customers = await getCustomers()
 
   return (
