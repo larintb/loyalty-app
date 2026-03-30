@@ -786,6 +786,7 @@ export async function syncSubscriptionFromStripe(): Promise<BillingResult & { ca
       .update({
         plan_status: planStatus,
         stripe_subscription_id: activeSub.id,
+        current_period_end: toIsoFromUnix(subAny.current_period_end),
       })
       .eq('id', context.businessId)
 

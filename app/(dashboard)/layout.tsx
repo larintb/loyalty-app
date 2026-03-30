@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Toaster } from '@/components/ui/sonner'
@@ -19,7 +20,7 @@ export default async function DashboardLayout({
   const { data: business } = await supabase
     .from('businesses')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .select('id, name, plan_status, logo_url, plan_id, trial_ends_at' as any)
+    .select('id, name, plan_status, logo_url, plan_id, trial_ends_at, current_period_end' as any)
     .eq('owner_id', user.id)
     .maybeSingle()
 
@@ -66,6 +67,12 @@ export default async function DashboardLayout({
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const biz = business as any
+  const cancellingEndsAt: string | null = planStatus === 'cancelling'
+    ? (biz?.current_period_end ?? null)
+    : null
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const trialEndsAt: string | null = (business as any)?.trial_ends_at ?? null
   const now = new Date()
   const trialEnd = trialEndsAt ? new Date(trialEndsAt) : null
@@ -91,6 +98,27 @@ export default async function DashboardLayout({
         daysLeft={daysLeft}
       />
       <main className="min-w-0 flex-1 overflow-auto">
+        {cancellingEndsAt && (
+          <div className="bg-rose-50 border-b border-rose-200 px-4 py-2.5 flex items-center justify-between gap-4">
+            <p className="text-sm text-rose-800">
+              <span className="font-semibold">Tu suscripción fue cancelada.</span>
+              {' '}Tu acceso termina el{' '}
+              <span className="font-semibold">
+                {new Date(cancellingEndsAt).toLocaleDateString('es-MX', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </span>.
+            </p>
+            <Link
+              href="/settings/billing"
+              className="shrink-0 text-xs font-medium text-rose-700 underline underline-offset-2 hover:text-rose-900"
+            >
+              Renovar plan
+            </Link>
+          </div>
+        )}
         <div className="container mx-auto px-4 py-6 pb-24 lg:pb-6 max-w-7xl">
           {children}
         </div>
