@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
   Store,
@@ -14,12 +14,14 @@ import {
   Clock,
   ArrowRight,
   BadgePercent,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { RedeemablesSection } from '@/components/settings/redeemables-section'
+import { LogoUpload } from '@/components/settings/logo-upload'
 import { updateBusinessInfo, updatePointsConfig } from '@/actions/settings'
 import type { PointsConfig, RedeemableProductRow } from '@/types/database'
 
@@ -29,8 +31,40 @@ type BusinessData = {
   phone: string | null
   address: string | null
   email: string | null
+  logo_url: string | null
   points_config: PointsConfig
   redeemable_products: RedeemableProductRow[]
+  plan_status: string | null
+  trial_ends_at: string | null
+}
+
+export function TrialBadge({ trialEndsAt, planStatus }: { trialEndsAt: string | null; planStatus: string | null }) {
+  const daysLeft = useMemo(() => {
+    if (!trialEndsAt) return 0
+    return Math.max(0, Math.ceil(
+      // eslint-disable-next-line react-hooks/purity
+      (new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    ))
+  }, [trialEndsAt])
+
+  if (planStatus !== 'trialing' || !trialEndsAt) return null
+
+  const isUrgent = daysLeft <= 3
+
+  return (
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${
+      isUrgent
+        ? 'bg-red-50 border-red-200 text-red-700'
+        : 'bg-amber-50 border-amber-200 text-amber-700'
+    }`}>
+      <Sparkles className="h-3.5 w-3.5" />
+      {daysLeft === 0
+        ? 'Tu prueba termina hoy'
+        : daysLeft === 1
+          ? '1 día de prueba gratis'
+          : `${daysLeft} días de prueba gratis`}
+    </div>
+  )
 }
 
 export function SettingsClient({ business }: { business: BusinessData }) {
@@ -48,6 +82,7 @@ export function SettingsClient({ business }: { business: BusinessData }) {
 function BusinessSection({ business }: { business: BusinessData }) {
   const [isPending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string | null>(business.logo_url)
   const [form, setForm] = useState({
     name: business.name,
     phone: business.phone ?? '',
@@ -88,6 +123,13 @@ function BusinessSection({ business }: { business: BusinessData }) {
       </div>
 
       <div className="rounded-xl border bg-card divide-y overflow-hidden lift-hover">
+        {/* Logo */}
+        <LogoUpload
+          currentUrl={logoUrl}
+          businessName={form.name}
+          onUploaded={(url) => setLogoUrl(url || null)}
+        />
+
         {/* Nombre — campo principal, más prominente */}
         <div className="px-4 py-3">
           <Label className="text-xs text-muted-foreground uppercase tracking-wide">

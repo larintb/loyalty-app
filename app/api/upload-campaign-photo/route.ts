@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
 
     const admin = await createAdminClient()
 
+    await (admin.storage as any).createBucket('campaign-photos', { public: true }).catch(() => {})
+
     const { error: uploadError } = await ((admin.storage as any)
       .from('campaign-photos')
       .upload(fileName, new Uint8Array(buffer), {

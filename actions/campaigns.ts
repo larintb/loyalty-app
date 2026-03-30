@@ -316,7 +316,7 @@ async function prepareAudience(campaignId: string, businessId: string) {
 
   const { data: prefs } = await supabase
     .from('customer_marketing_prefs' as any)
-    .select('customer_id, whatsapp_opt_in, last_marketing_sent_at')
+    .select('customer_id, whatsapp_opt_in, opt_in_at, whatsapp_opt_out_at, last_marketing_sent_at')
     .in('customer_id', (customers ?? []).map((c) => c.id))
 
   const { data: suppressionRows } = await supabase
@@ -344,9 +344,10 @@ async function prepareAudience(campaignId: string, businessId: string) {
     let status: 'queued' | 'blocked' = 'queued'
     let blockedReason: string | null = null
 
-    // Si no existe registro de preferencias, asumimos habilitado por ahora.
-    // Solo bloqueamos cuando el cliente se marco explicitamente como opt-out.
-    if (pref?.whatsapp_opt_in === false) {
+    // Requiere opt-in explícito (LFPDPPP): sin registro o sin opt-in = bloqueado
+    const hasExplicitOptIn = pref?.whatsapp_opt_in === true && !pref?.whatsapp_opt_out_at
+
+    if (!hasExplicitOptIn) {
       status = 'blocked'
       blockedReason = 'no_opt_in'
     } else if (suppression.has(normalizedPhone)) {

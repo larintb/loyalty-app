@@ -15,16 +15,47 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { FormError } from '@/components/ui/form-error'
+import { MailCheck } from 'lucide-react'
 
 export default function RegisterPage() {
   const [state, action, pending] = useActionState(register, null)
+
+  if (state?.verifyEmail) {
+    return (
+      <Card>
+        <CardContent className="pt-8 pb-6 text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <MailCheck className="h-7 w-7 text-primary" />
+            </div>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Revisa tu correo</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Te enviamos un enlace de confirmación a
+            </p>
+            <p className="text-sm font-medium mt-0.5">{state.verifyEmail}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Abre el correo y haz clic en el enlace para activar tu cuenta.
+            Después podrás iniciar sesión.
+          </p>
+          <Link href="/login">
+            <Button variant="outline" className="w-full mt-2">
+              Ir a iniciar sesión
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Crea tu cuenta</CardTitle>
         <CardDescription>
-          14 días gratis, sin tarjeta de crédito
+          7 días gratis, sin tarjeta de crédito
         </CardDescription>
       </CardHeader>
       <CardContent>

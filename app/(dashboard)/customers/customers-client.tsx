@@ -19,6 +19,7 @@ type Customer = {
   visit_count: number
   last_visit_at: string | null
   created_at: string
+  consent_status?: 'signed' | 'revoked' | 'missing'
 }
 
 export function CustomersClient({ customers }: { customers: Customer[] }) {
@@ -90,6 +91,21 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium truncate">{c.name}</p>
+                      {c.consent_status === 'signed' && (
+                        <Badge variant="outline" className="text-[10px] shrink-0 border-emerald-300 text-emerald-700">
+                          Consentimiento activo
+                        </Badge>
+                      )}
+                      {c.consent_status === 'revoked' && (
+                        <Badge variant="destructive" className="text-[10px] shrink-0">
+                          Consentimiento revocado
+                        </Badge>
+                      )}
+                      {c.consent_status === 'missing' && (
+                        <Badge variant="outline" className="text-[10px] shrink-0 border-amber-300 text-amber-700">
+                          Sin consentimiento
+                        </Badge>
+                      )}
                       {c.total_points > 0 && (
                         <Badge variant="secondary" className="text-xs shrink-0">
                           <Star className="h-2.5 w-2.5 mr-0.5" />

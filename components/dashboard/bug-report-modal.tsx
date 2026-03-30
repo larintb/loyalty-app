@@ -60,8 +60,6 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
     try {
       // Si hay foto, enviarla primero por separado
       if (photo) {
-        const fileName = `${Date.now()}_${photo.name}`
-        
         // Crear FormData para la subida de archivo
         const uploadFormData = new FormData()
         uploadFormData.append('file', photo)
@@ -105,7 +103,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
           toast.error(result.error)
         }
       }
-    } catch (error) {
+    } catch {
       toast.error('Error al enviar el reporte')
     } finally {
       setIsSubmitting(false)

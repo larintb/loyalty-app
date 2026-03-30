@@ -4,7 +4,8 @@ import { getCustomerProfile } from '@/actions/customers'
 import { formatPhoneDisplay } from '@/lib/utils/phone'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Star, ShoppingBag, Calendar } from 'lucide-react'
+import { ArrowLeft, Star, ShoppingBag, Calendar, FileSignature } from 'lucide-react'
+import { RevokeConsentButton } from '@/components/customers/revoke-consent-button'
 
 export default async function CustomerProfilePage({
   params,
@@ -15,7 +16,7 @@ export default async function CustomerProfilePage({
   const data = await getCustomerProfile(id)
   if (!data) notFound()
 
-  const { customer, transactions, pointsHistory } = data
+  const { customer, transactions, pointsHistory, consent } = data
 
   const formattedPhone = formatPhoneDisplay(customer.phone)
 
@@ -108,6 +109,87 @@ export default async function CustomerProfilePage({
                   <span className="font-semibold">${Number(tx.total).toFixed(2)}</span>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Consentimiento legal */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileSignature className="h-4 w-4" />
+            Consentimiento y firma
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!consent ? (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              Este cliente no tiene consentimiento digital registrado.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Badge variant={consent.revoked_at ? 'destructive' : 'default'}>
+                  {consent.revoked_at ? 'Revocado' : 'Firmado'}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(consent.signed_at).toLocaleDateString('es-MX', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+
+              <div className="text-sm space-y-0.5">
+                <p>
+                  <span className="text-muted-foreground">Firmante:</span>{' '}
+                  <span className="font-medium">{consent.signer_name_typed}</span>
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Teléfono:</span>{' '}
+                  <span className="font-medium">{formatPhoneDisplay(consent.signer_phone)}</span>
+                </p>
+                {consent.contract_snapshot_json?.documents && (
+                  <p className="text-xs text-muted-foreground pt-1">
+                    Versiones legales: privacidad {consent.contract_snapshot_json.documents.privacy?.version_label ?? '—'} ·
+                    términos {consent.contract_snapshot_json.documents.terms?.version_label ?? '—'} ·
+                    recompensas {consent.contract_snapshot_json.documents.rewards?.version_label ?? '—'}
+                  </p>
+                )}
+              </div>
+
+              {consent.signature_signed_url && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Firma capturada</p>
+                  <a
+                    href={consent.signature_signed_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex text-xs text-primary hover:underline"
+                  >
+                    Ver firma
+                  </a>
+                </div>
+              )}
+
+              <div>
+                <a
+                  href={`/api/consents/${consent.id}/receipt`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex text-xs text-primary hover:underline"
+                >
+                  Descargar comprobante
+                </a>
+              </div>
+
+              {!consent.revoked_at && (
+                <RevokeConsentButton consentId={consent.id} customerId={customer.id} />
+              )}
             </div>
           )}
         </CardContent>

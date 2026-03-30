@@ -4,12 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import type { PointsConfig } from '@/types/database'
 
 type OnboardingPayload = {
-  businessId: string
   name: string
   phone?: string
   address?: string
   pointsConfig: PointsConfig
   planId?: string
+  markCompleted?: boolean
 }
 
 export async function completeOnboarding(payload: OnboardingPayload) {
@@ -17,6 +17,15 @@ export async function completeOnboarding(payload: OnboardingPayload) {
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado.' }
+
+  // Derivar businessId del usuario autenticado — nunca confiar en el cliente
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+
+  if (!business) return { error: 'Negocio no encontrado.' }
 
   const { error } = await supabase
     .from('businesses')
@@ -26,9 +35,9 @@ export async function completeOnboarding(payload: OnboardingPayload) {
       address: payload.address || null,
       points_config: payload.pointsConfig,
       plan_id: payload.planId || null,
-      onboarding_completed: true,
+      onboarding_completed: payload.markCompleted ?? false,
     })
-    .eq('id', payload.businessId)
+    .eq('id', business.id)
     .eq('owner_id', user.id)
 
   if (error) {

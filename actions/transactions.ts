@@ -128,35 +128,38 @@ export async function createSale(payload: SalePayload): Promise<SaleResult> {
   const subtotal = payload.total
   const discount = payload.discount ?? 0
 
-  // Validar y calcular redención de puntos
+  // Leer balance actual del cliente (siempre, no solo al canjear)
   let pointsRedeemed = 0
   let discountByPoints = 0
   let customerCurrentBalance = 0
 
-  if (payload.customerId && (payload.pointsToRedeem ?? 0) > 0) {
+  if (payload.customerId) {
     const { data: customer } = await supabase
       .from('customers')
-      .select('total_points, name')
+      .select('total_points')
       .eq('id', payload.customerId)
       .single()
 
     if (!customer) return { success: false, error: 'Cliente no encontrado.' }
 
     customerCurrentBalance = customer.total_points
-    const validation = canRedeem(payload.pointsToRedeem!, customerCurrentBalance, config)
 
-    if (!validation.allowed) {
-      return { success: false, error: validation.reason ?? 'No se puede canjear.' }
+    if ((payload.pointsToRedeem ?? 0) > 0) {
+      const validation = canRedeem(payload.pointsToRedeem!, customerCurrentBalance, config)
+
+      if (!validation.allowed) {
+        return { success: false, error: validation.reason ?? 'No se puede canjear.' }
+      }
+
+      pointsRedeemed = payload.pointsToRedeem!
+      discountByPoints = calculateRedemptionValue(pointsRedeemed, config)
     }
-
-    pointsRedeemed = payload.pointsToRedeem!
-    discountByPoints = calculateRedemptionValue(pointsRedeemed, config)
   }
 
   const total = Math.max(0, subtotal - discount - discountByPoints)
 
   // Puntos ganados sobre el total final pagado (con multiplicador opcional)
-  const multiplier = payload.pointsMultiplier ?? 1
+  const multiplier = [1, 2, 3].includes(payload.pointsMultiplier as number) ? payload.pointsMultiplier! : 1
   const pointsEarned = payload.customerId
     ? calculateEarnedPoints(total, config) * multiplier
     : 0
@@ -218,7 +221,7 @@ export async function createSale(payload: SalePayload): Promise<SaleResult> {
       })
     }
 
-    // 3. Actualizar stats del cliente
+    // 3. Actualizar stats del cliente (incluyendo total_points)
     const { data: currentCustomer } = await supabase
       .from('customers')
       .select('lifetime_spend, visit_count')
@@ -228,6 +231,7 @@ export async function createSale(payload: SalePayload): Promise<SaleResult> {
     await supabase
       .from('customers')
       .update({
+        total_points: newBalance,
         lifetime_spend: (currentCustomer?.lifetime_spend ?? 0) + total,
         visit_count: (currentCustomer?.visit_count ?? 0) + 1,
         last_visit_at: new Date().toISOString(),

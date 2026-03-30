@@ -1,5 +1,4 @@
 'use server'
-'use server'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from '@/lib/supabase/server'
@@ -7,7 +6,6 @@ import { sendTextMessage } from '@/lib/whatsapp/client'
 import type {
   RedeemableProductInsert,
   RedeemableProductRow,
-  RedemptionRow,
 } from '@/types/database'
 
 // ─── Helper: obtener business_id del usuario ──────────────────────────────────

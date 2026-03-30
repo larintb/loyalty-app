@@ -51,7 +51,7 @@ export function RedeemablesButtons({ products, customerPoints, customerId, onRed
       }
 
       setStatus('idle');
-    } catch (error) {
+    } catch {
       setValidationError('Error al validar canje');
       setStatus('error');
     }
@@ -96,7 +96,7 @@ export function RedeemablesButtons({ products, customerPoints, customerId, onRed
           setNotes('');
         }, 2000);
       }
-    } catch (error) {
+    } catch {
       setStatus('error');
       setValidationError('Error al procesar canje');
     }

@@ -6,6 +6,7 @@ const nextConfig = {
       bodySizeLimit: "25mb",
     },
   },
+  serverExternalPackages: [],
 } satisfies NextConfig;
 
 export default nextConfig;

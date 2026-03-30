@@ -11,9 +11,9 @@ export function ReportsPaywall() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[600px] px-4">
+    <div className="flex items-center justify-center min-h-150 px-4">
       <div className="w-full max-w-md">
-        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-50/50 p-8">
+        <Card className="border-2 border-blue-200 bg-linear-to-br from-blue-50 to-blue-50/50 p-8">
           {/* Ícono */}
           <div className="mb-6 flex justify-center">
             <div className="rounded-full bg-blue-100 p-4">
@@ -34,7 +34,7 @@ export function ReportsPaywall() {
           {/* Beneficios */}
           <div className="mb-8 space-y-3">
             <div className="flex items-start gap-3">
-              <div className="mt-1 flex-shrink-0">
+              <div className="mt-1 shrink-0">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600">
                   <Zap className="h-3 w-3 text-white" />
                 </div>
@@ -46,7 +46,7 @@ export function ReportsPaywall() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="mt-1 flex-shrink-0">
+              <div className="mt-1 shrink-0">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600">
                   <Zap className="h-3 w-3 text-white" />
                 </div>
@@ -58,7 +58,7 @@ export function ReportsPaywall() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="mt-1 flex-shrink-0">
+              <div className="mt-1 shrink-0">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600">
                   <Zap className="h-3 w-3 text-white" />
                 </div>
@@ -72,13 +72,13 @@ export function ReportsPaywall() {
 
           {/* Pricing */}
           <div className="mb-8 rounded-lg bg-white p-4 text-center">
-            <p className="text-sm text-gray-600">Plan Crecimiento</p>
+            <p className="text-sm text-gray-600">Plan Pro</p>
             <div className="mt-2 flex items-baseline justify-center gap-1">
-              <span className="text-3xl font-bold text-gray-900">$799</span>
+              <span className="text-3xl font-bold text-gray-900">$999</span>
               <span className="text-gray-600">MXN/mes</span>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Incluye Reportes + Finanzas + Soporte por Email
+              Incluye Reportes + Finanzas + herramientas de crecimiento
             </p>
           </div>
 

@@ -4,11 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Trash2, Edit2, Plus, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  deleteRedeemableProduct,
-  getBusinessRedeemables,
-} from '@/actions/redeemable'
+import { deleteRedeemableProduct } from '@/actions/redeemable'
 import type { RedeemableProductRow } from '@/types/database'
 import { CreateEditRedeemableModal } from './create-edit-redeemable-modal'
 

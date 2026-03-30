@@ -1,8 +1,8 @@
 'use server'
-'use server'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { PointsConfig, RedeemableProductRow } from '@/types/database'
 
 export async function getBusinessSettings() {
@@ -12,7 +12,7 @@ export async function getBusinessSettings() {
 
   const { data } = await supabase
     .from('businesses')
-    .select('id, name, phone, address, email, points_config')
+    .select('id, name, phone, address, email, logo_url, points_config, plan_status, trial_ends_at')
     .eq('owner_id', user.id)
     .single()
 
@@ -55,6 +55,57 @@ export async function updateBusinessInfo(payload: {
 
   if (error) return { error: 'Error al guardar los datos del negocio.' }
   return { success: true }
+}
+
+const BUCKET = 'business-logos'
+
+export async function getLogoUploadUrl(
+  fileName: string
+): Promise<{ signedUrl?: string; path?: string; publicUrl?: string; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado.' }
+
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', user.id)
+    .single()
+  if (!business) return { error: 'Negocio no encontrado.' }
+
+  const admin = createAdminClient()
+
+  // Crear bucket si no existe (idempotente)
+  await admin.storage.createBucket(BUCKET, { public: true }).catch(() => {})
+
+  const ext = (fileName.split('.').pop() ?? 'png').toLowerCase()
+  const path = `${business.id}/logo.${ext}`
+
+  const { data, error } = await admin.storage
+    .from(BUCKET)
+    .createSignedUploadUrl(path, { upsert: true })
+
+  if (error || !data) return { error: 'No se pudo generar la URL de subida.' }
+
+  const { data: { publicUrl } } = admin.storage.from(BUCKET).getPublicUrl(path)
+
+  return { signedUrl: data.signedUrl, path, publicUrl }
+}
+
+export async function saveBusinessLogoUrl(
+  logoUrl: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado.' }
+
+  const { error } = await supabase
+    .from('businesses')
+    .update({ logo_url: logoUrl || null })
+    .eq('owner_id', user.id)
+
+  if (error) return { error: 'Error al guardar el logo.' }
+  return {}
 }
 
 export async function updatePointsConfig(
