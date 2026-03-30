@@ -22,8 +22,8 @@ type Props = {
 }
 
 export function RegisterModal({ open, defaultPhone, onClose, onRegistered }: Props) {
-  const privacyPdfUrl = 'avisoytermino.pdf'
-  const termsPdfUrl = 'avisoytermino.pdf'
+  const privacyPdfUrl = '/terms'
+  const termsPdfUrl = '/terms'
 
   const [phone, setPhone] = useState(defaultPhone)
   const [acceptRewards, setAcceptRewards] = useState(false)
@@ -95,7 +95,6 @@ export function RegisterModal({ open, defaultPhone, onClose, onRegistered }: Pro
     isDrawingRef.current = true
     lastPointRef.current = p
 
-    // Dot for simple tap signatures.
     ctx.beginPath()
     ctx.arc(p.x, p.y, 1, 0, Math.PI * 2)
     ctx.fillStyle = '#111827'
@@ -147,12 +146,8 @@ export function RegisterModal({ open, defaultPhone, onClose, onRegistered }: Pro
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-    const width = canvas.clientWidth
-    const height = canvas.clientHeight
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, width, height)
-
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight)
     setHasInk(false)
     setSignatureDataUrl('')
     setLocalError('')
@@ -174,97 +169,123 @@ export function RegisterModal({ open, defaultPhone, onClose, onRegistered }: Pro
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      {/* sm:max-w-2xl para tableta landscape: dos columnas side-by-side */}
+      <DialogContent className="max-h-[95svh] overflow-y-auto sm:max-w-2xl sm:overflow-visible">
         <DialogHeader>
           <DialogTitle>Registrar nuevo cliente</DialogTitle>
           <DialogDescription>
             El cliente acumulará puntos desde esta venta.
           </DialogDescription>
         </DialogHeader>
-        <form action={action} className="space-y-4 mt-2">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre</Label>
-            <Input id="name" name="name" placeholder="Juan Pérez" required autoFocus />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono</Label>
-            <Input
-              id="phone"
-              name="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-              type="tel"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="tel"
-              placeholder="5512345678"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">
-              Correo <span className="text-muted-foreground text-xs">(opcional)</span>
-            </Label>
-            <Input id="email" name="email" type="email" placeholder="juan@email.com" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="birthday">
-              Cumpleaños <span className="text-muted-foreground text-xs">(opcional)</span>
-            </Label>
-            <Input id="birthday" name="birthday" type="date" />
-          </div>
 
-          <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-            <p className="text-sm font-medium">Consentimiento</p>
+        <form action={action} className="mt-2">
+          {/* En sm+: dos columnas. En mobile: columna única */}
+          <div className="sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-0 space-y-4 sm:space-y-0">
 
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="accepted_rewards_program"
-                checked={acceptRewards}
-                onChange={(e) => setAcceptRewards(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>Acepta inscribirse al sistema de recompensas.</span>
-            </label>
+            {/* ── COLUMNA IZQUIERDA: campos del formulario ── */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nombre</Label>
+                <Input id="name" name="name" placeholder="Juan Pérez" required autoFocus />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Teléfono</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="tel"
+                  placeholder="5512345678"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">
+                  Correo <span className="text-muted-foreground text-xs">(opcional)</span>
+                </Label>
+                <Input id="email" name="email" type="email" placeholder="juan@email.com" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="birthday">
+                  Cumpleaños <span className="text-muted-foreground text-xs">(opcional)</span>
+                </Label>
+                <Input id="birthday" name="birthday" type="date" />
+              </div>
 
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="accepted_legal_terms"
-                checked={acceptLegal}
-                onChange={(e) => setAcceptLegal(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                Acepta{' '}
-                <a
-                  href={privacyPdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 text-primary"
+              {/* Consentimiento */}
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                <p className="text-sm font-medium">Consentimiento</p>
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="accepted_rewards_program"
+                    checked={acceptRewards}
+                    onChange={(e) => setAcceptRewards(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>Acepta inscribirse al sistema de recompensas.</span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="accepted_legal_terms"
+                    checked={acceptLegal}
+                    onChange={(e) => setAcceptLegal(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Acepta{' '}
+                    <a
+                      href={privacyPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 text-primary"
+                    >
+                      aviso de privacidad
+                    </a>
+                    {' '}y{' '}
+                    <a
+                      href={termsPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 text-primary"
+                    >
+                      términos y condiciones
+                    </a>
+                    .
+                  </span>
+                </label>
+              </div>
+
+              {localError && <FormError message={localError} />}
+              {state?.error && <FormError message={state.error} />}
+
+              <div className="flex gap-2 pt-1">
+                <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={pending || !canSubmit}
+                  title={!canSubmit ? 'Completa consentimientos y firma para registrar.' : undefined}
                 >
-                  aviso de privacidad
-                </a>
-                {' '}y{' '}
-                <a
-                  href={termsPdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 text-primary"
-                >
-                  términos y condiciones
-                </a>
-                .
-              </span>
-            </label>
+                  {pending ? 'Registrando...' : 'Registrar cliente'}
+                </Button>
+              </div>
+            </div>
 
-            <div className="space-y-2 pt-1">
-              <Label className="text-sm">Firma del cliente</Label>
-              <div className="rounded-md border bg-white p-2">
+            {/* ── COLUMNA DERECHA: firma ── */}
+            <div className="space-y-2 sm:flex sm:flex-col">
+              <Label className="text-sm font-medium">Firma del cliente</Label>
+              <div className="rounded-md border bg-white p-2 flex-1 sm:min-h-0">
                 <canvas
                   ref={canvasRef}
-                  className="w-full h-36 touch-none rounded border"
+                  className="w-full h-48 sm:h-full touch-none rounded border block"
                   onPointerDown={startDraw}
                   onPointerMove={moveDraw}
                   onPointerUp={endDraw}
@@ -272,34 +293,19 @@ export function RegisterModal({ open, defaultPhone, onClose, onRegistered }: Pro
                   onPointerLeave={endDraw}
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={clearSignature}>
                   Limpiar firma
                 </Button>
+                {!!signatureDataUrl && (
+                  <p className="text-xs text-emerald-700">✓ Firma capturada</p>
+                )}
               </div>
-              {!!signatureDataUrl && (
-                <p className="text-xs text-emerald-700">Firma capturada correctamente.</p>
-              )}
             </div>
+
           </div>
 
           <input type="hidden" name="signature_data_url" value={signatureDataUrl} readOnly />
-
-          {localError && <FormError message={localError} />}
-          {state?.error && <FormError message={state.error} />}
-          <div className="flex gap-2 pt-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              className="flex-1"
-              disabled={pending || !canSubmit}
-              title={!canSubmit ? 'Completa consentimientos y firma para registrar.' : undefined}
-            >
-              {pending ? 'Registrando...' : 'Registrar cliente'}
-            </Button>
-          </div>
         </form>
       </DialogContent>
     </Dialog>

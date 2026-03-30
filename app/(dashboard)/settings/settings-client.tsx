@@ -169,6 +169,8 @@ function BusinessSection({ business }: { business: BusinessData }) {
           placeholder="hola@micafe.mx"
           inputMode="email"
           optional
+          disabled={!!business.email}
+          disabledHint="Contacta soporte para cambiar el email"
         />
       </div>
 
@@ -205,6 +207,8 @@ function FieldRow({
   placeholder,
   inputMode,
   optional,
+  disabled,
+  disabledHint,
 }: {
   icon: React.ReactNode
   label: string
@@ -213,15 +217,20 @@ function FieldRow({
   placeholder?: string
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']
   optional?: boolean
+  disabled?: boolean
+  disabledHint?: string
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-200 hover:bg-muted/40">
+    <div className={`flex items-center gap-3 px-4 py-2.5 transition-colors duration-200 ${disabled ? 'opacity-60' : 'hover:bg-muted/40'}`}>
       <div className="text-muted-foreground shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground">{label}</span>
-          {optional && (
+          {optional && !disabled && (
             <span className="text-xs text-muted-foreground/60">(opcional)</span>
+          )}
+          {disabled && disabledHint && (
+            <span className="text-xs text-muted-foreground/50 italic">{disabledHint}</span>
           )}
         </div>
         <Input
@@ -229,7 +238,8 @@ function FieldRow({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           inputMode={inputMode}
-          className="border-0 shadow-none px-0 h-7 text-sm focus-visible:ring-0"
+          disabled={disabled}
+          className="border-0 shadow-none px-0 h-7 text-sm focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-100"
         />
       </div>
     </div>

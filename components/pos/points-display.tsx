@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { calculateRedemptionValue, maxRedeemablePoints } from '@/lib/points/calculator'
@@ -31,68 +30,96 @@ export function PointsDisplay({ currentPoints, subtotal, config, onRedemptionCha
       setPointsInput('')
       onRedemptionChange(0, 0)
     } else {
-      // Por defecto canjear el máximo
       setPointsInput(String(maxPoints))
       onRedemptionChange(maxPoints, calculateRedemptionValue(maxPoints, config))
     }
   }
 
   function handlePointsChange(value: string) {
-    const num = parseInt(value) || 0
+    const digits = value.replace(/\D/g, '')
+    const num = parseInt(digits) || 0
     const clamped = Math.min(num, maxPoints)
-    setPointsInput(String(clamped))
+    setPointsInput(clamped === 0 ? '' : String(clamped))
     onRedemptionChange(clamped, calculateRedemptionValue(clamped, config))
   }
 
-  if (currentPoints === 0) {
+  if (currentPoints === 0 || maxPoints === 0) {
     return (
       <div className={`rounded-lg border px-4 py-3 text-sm ${
-        isDark
-          ? 'border-white/20 text-white/70'
-          : 'text-muted-foreground'
+        isDark ? 'border-white/20 text-white/50' : 'text-muted-foreground'
       }`}>
-        El cliente no tiene puntos acumulados aún.
+        El cliente no tiene puntos canjeables en esta compra.
       </div>
     )
   }
 
   return (
-    <div className={`rounded-lg border px-4 py-3 space-y-3 ${isDark ? 'border-white/20 text-white' : ''}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Canjear puntos</span>
-          <Badge variant="secondary" className={isDark ? 'bg-white/20 text-white border-transparent' : ''}>
+    <div className="space-y-3">
+      {/* Toggle row */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`text-sm font-semibold ${isDark ? 'text-white' : ''}`}>
+            Canjear puntos
+          </span>
+          <Badge
+            variant="secondary"
+            className={`text-xs ${isDark ? 'bg-white/15 text-white border-transparent' : ''}`}
+          >
             ⭐ {currentPoints} disponibles
           </Badge>
         </div>
-        <Switch checked={redeeming} onCheckedChange={handleToggle} />
+        <Switch
+          checked={redeeming}
+          onCheckedChange={handleToggle}
+          className={isDark ? 'data-[state=unchecked]:bg-white/20' : ''}
+        />
       </div>
 
+      {/* Detalle del canje */}
       {redeeming && (
-        <div className="space-y-2 pt-1">
+        <div className={`rounded-lg border px-4 py-3 space-y-3 ${
+          isDark ? 'border-white/20 bg-white/5' : 'bg-muted/30'
+        }`}>
+          {/* Input de puntos */}
           <div className="flex items-center gap-3">
-            <Label className={`text-sm w-28 shrink-0 ${isDark ? 'text-white/75' : 'text-muted-foreground'}`}>
+            <span className={`text-sm shrink-0 ${isDark ? 'text-white/70' : 'text-muted-foreground'}`}>
               Puntos a canjear
-            </Label>
+            </span>
             <Input
               value={pointsInput}
               onChange={(e) => handlePointsChange(e.target.value)}
               inputMode="numeric"
-              className={`w-24 text-center ${
+              placeholder={String(maxPoints)}
+              className={`w-24 text-center font-mono font-semibold ${
                 isDark
-                  ? 'bg-white text-black border-white placeholder:text-black/50'
+                  ? 'bg-white text-black border-white placeholder:text-black/40'
                   : ''
               }`}
             />
-            <span className={`text-sm ${isDark ? 'text-white/70' : 'text-muted-foreground'}`}>
+            <span className={`text-xs shrink-0 ${isDark ? 'text-white/50' : 'text-muted-foreground'}`}>
               máx. {maxPoints}
             </span>
           </div>
-          {discount > 0 && (
-            <p className="text-sm font-semibold text-green-600 dark:text-green-400">
-              Descuento: -${discount.toFixed(2)} MXN
-            </p>
-          )}
+
+          {/* Resumen matemático */}
+          <div className={`space-y-1.5 text-sm pt-1 border-t ${isDark ? 'border-white/10' : 'border-border'}`}>
+            <div className="flex justify-between">
+              <span className={isDark ? 'text-white/60' : 'text-muted-foreground'}>Puntos seleccionados</span>
+              <span className={`font-medium ${isDark ? 'text-white' : ''}`}>{pointsToRedeem} pts</span>
+            </div>
+            <div className="flex justify-between">
+              <span className={isDark ? 'text-white/60' : 'text-muted-foreground'}>Descuento en compra</span>
+              <span className="font-bold text-green-400">
+                −${discount.toFixed(2)} MXN
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className={isDark ? 'text-white/60' : 'text-muted-foreground'}>Total a pagar</span>
+              <span className={`font-bold text-base ${isDark ? 'text-white' : ''}`}>
+                ${Math.max(0, subtotal - discount).toFixed(2)} MXN
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>

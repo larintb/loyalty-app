@@ -5,7 +5,14 @@
       "Bash(ls \"C:/Users/vlpiz/Desktop/puntaje/loyalty-app/app/\\(dashboard\\)/customers/\")",
       "Bash(ls \"C:/Users/vlpiz/Desktop/puntaje/loyalty-app/app/\\(dashboard\\)/reports/\")",
       "Bash(grep -r \"sheet\\\\|Sheet\\\\|drawer\\\\|Drawer\" C:/Users/vlpiz/Desktop/puntaje/loyalty-app --include=*.tsx -l)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/vlpiz/Desktop/puntaje/loyalty-app/**)",
+      "Bash(done)",
+      "Bash(xargs grep:*)",
+      "Bash(find C:UsersvlpizDesktoppuntajeloyalty-app -maxdepth 1 -type f -name *.ts -o -name *.tsx)",
+      "Bash(grep -E \"^-.*\\\\.\\(ts|tsx\\)$\")"
     ]
   }
 }

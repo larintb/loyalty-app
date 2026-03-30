@@ -172,6 +172,7 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
 
             {photoPreview ? (
               <div className="relative w-full rounded-lg overflow-hidden border-2 border-primary/20 bg-muted/30">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photoPreview}
                   alt="Preview"

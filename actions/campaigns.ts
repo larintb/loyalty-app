@@ -15,7 +15,6 @@ type CampaignSegment = {
 }
 
 type CampaignRules = {
-  cooldownHours: number
   maxRecipients: number
   quietHoursStart: number
   quietHoursEnd: number
@@ -54,7 +53,6 @@ export type CreateCampaignInput = {
   imageUrl?: string
   minPoints?: number
   inactiveDays?: number
-  cooldownHours?: number
   maxRecipients?: number
   quietHoursStart?: number
   quietHoursEnd?: number
@@ -106,13 +104,11 @@ async function getBusinessContext(supabase: Awaited<ReturnType<typeof createClie
 }
 
 function normalizeRules(input: CreateCampaignInput): CampaignRules {
-  const cooldownHours = Math.max(1, Math.min(24 * 14, input.cooldownHours ?? 72))
   const maxRecipients = Math.max(1, Math.min(5000, input.maxRecipients ?? 200))
   const quietHoursStart = Math.max(0, Math.min(23, input.quietHoursStart ?? 9))
   const quietHoursEnd = Math.max(1, Math.min(24, input.quietHoursEnd ?? 20))
 
   return {
-    cooldownHours,
     maxRecipients,
     quietHoursStart,
     quietHoursEnd,
@@ -330,7 +326,6 @@ async function prepareAudience(campaignId: string, businessId: string) {
     prefsByCustomer.set(p.customer_id, p)
   }
 
-  const cooldownMs = rules.cooldownHours * 60 * 60 * 1000
   const minLastVisit = segment.inactiveDays
     ? Date.now() - segment.inactiveDays * 24 * 60 * 60 * 1000
     : null
@@ -344,10 +339,10 @@ async function prepareAudience(campaignId: string, businessId: string) {
     let status: 'queued' | 'blocked' = 'queued'
     let blockedReason: string | null = null
 
-    // Requiere opt-in explícito (LFPDPPP): sin registro o sin opt-in = bloqueado
-    const hasExplicitOptIn = pref?.whatsapp_opt_in === true && !pref?.whatsapp_opt_out_at
+    // Bloquear solo si el cliente explícitamente optó por no recibir mensajes
+    const hasExplicitOptOut = pref?.whatsapp_opt_in === false || !!pref?.whatsapp_opt_out_at
 
-    if (!hasExplicitOptIn) {
+    if (hasExplicitOptOut) {
       status = 'blocked'
       blockedReason = 'no_opt_in'
     } else if (suppression.has(normalizedPhone)) {
@@ -361,12 +356,6 @@ async function prepareAudience(campaignId: string, businessId: string) {
       if (lastVisit > minLastVisit) {
         status = 'blocked'
         blockedReason = 'recently_active'
-      }
-    } else if (pref?.last_marketing_sent_at) {
-      const diff = Date.now() - new Date(pref.last_marketing_sent_at).getTime()
-      if (diff < cooldownMs) {
-        status = 'blocked'
-        blockedReason = 'cooldown_active'
       }
     }
 

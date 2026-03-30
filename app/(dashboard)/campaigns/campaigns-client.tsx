@@ -219,6 +219,7 @@ function WhatsAppPreview({ message, imageUrl }: { message: string; imageUrl?: st
         }} />
         <div className="relative ml-auto max-w-[90%] rounded-2xl rounded-tr-sm bg-[#DCF8C6] px-3 py-2 shadow-sm border border-green-200/60 space-y-2">
           {imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={imageUrl} alt="Preview" className="w-full max-h-40 object-cover rounded-lg border border-green-200" />
           )}
           <p className="text-[13px] leading-relaxed text-[#111B21] whitespace-pre-wrap">{message || '...'}</p>
@@ -681,6 +682,7 @@ export function CampaignsClient({ initialData }: Props) {
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                 {form.imagePreview ? (
                   <div className="relative rounded-lg overflow-hidden border bg-muted/30">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={form.imagePreview} alt="Preview foto" className="w-full h-32 object-cover" />
                     <Button
                       size="sm" variant="ghost"

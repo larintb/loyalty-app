@@ -37,10 +37,10 @@ type SaleSuccess = {
   newBalance: number
 }
 
-export function POSClient({ 
-  pointsConfig, 
-  redeemableProducts = [] 
-}: { 
+export function POSClient({
+  pointsConfig,
+  redeemableProducts = []
+}: {
   pointsConfig: PointsConfig
   redeemableProducts?: RedeemableProductRow[]
 }) {
@@ -109,7 +109,6 @@ export function POSClient({
     const found = await searchCustomerByPhone(registerPhone)
     if (found) {
       setCustomer(found)
-      // Foco al campo total después de registrar
       setTimeout(() => totalRef.current?.focus(), 100)
     }
     setShowRegister(false)
@@ -118,10 +117,7 @@ export function POSClient({
   async function handleSendWhatsApp(newBalance?: number) {
     if (!saleResult?.customerPhone || !saleResult.customerName) return
     setWaSending(true)
-    
-    // Si hay un nuevo balance (por canje), actualizar el saleResult
     const pointsBalance = newBalance ?? saleResult.newBalance
-    
     const result = await sendWhatsAppTicket({
       transactionId: saleResult.transactionId,
       customerPhone: saleResult.customerPhone,
@@ -130,12 +126,11 @@ export function POSClient({
       total: saleResult.total,
       discountByPoints: saleResult.discountByPoints,
       pointsEarned: saleResult.pointsEarned,
-      pointsBalance: pointsBalance,
+      pointsBalance,
     })
     setWaSending(false)
     if (result.success) {
       setWaSent(true)
-      // Si fue un resend por canje, mostrar toast informativo
       if (newBalance !== undefined) {
         toast.success('Ticket actualizado enviado por WhatsApp')
       }
@@ -169,40 +164,39 @@ export function POSClient({
               </div>
 
               <div className="rounded-xl bg-emerald-50 p-4 space-y-2 text-left text-sm">
-              {saleResult.customerName && (
-                <div className="flex justify-between">
-                  <span className="text-emerald-900/70">Cliente</span>
-                  <span className="font-medium text-emerald-950">{saleResult.customerName}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-base">
-                <span className="text-emerald-900/70">Total</span>
-                <span className="font-bold text-emerald-950">${saleResult.total.toFixed(2)}</span>
-              </div>
-              {saleResult.pointsRedeemed > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-emerald-900/70">Puntos canjeados</span>
-                  <span className="text-orange-500">−{saleResult.pointsRedeemed} pts</span>
-                </div>
-              )}
-              {saleResult.pointsEarned > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-emerald-900/70">Puntos ganados</span>
-                  <span className="text-green-600 font-semibold">+{saleResult.pointsEarned} pts</span>
-                </div>
-              )}
-              {saleResult.customerName && (
-                <>
-                  <Separator />
-                  <div className="flex justify-between font-semibold text-emerald-900">
-                    <span>Saldo actual</span>
-                    <span>⭐ {saleResult.newBalance} pts</span>
+                {saleResult.customerName && (
+                  <div className="flex justify-between">
+                    <span className="text-emerald-900/70">Cliente</span>
+                    <span className="font-medium text-emerald-950">{saleResult.customerName}</span>
                   </div>
-                </>
-              )}
+                )}
+                <div className="flex justify-between text-base">
+                  <span className="text-emerald-900/70">Total</span>
+                  <span className="font-bold text-emerald-950">${saleResult.total.toFixed(2)}</span>
+                </div>
+                {saleResult.pointsRedeemed > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-emerald-900/70">Puntos canjeados</span>
+                    <span className="text-orange-500">−{saleResult.pointsRedeemed} pts</span>
+                  </div>
+                )}
+                {saleResult.pointsEarned > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-emerald-900/70">Puntos ganados</span>
+                    <span className="text-green-600 font-semibold">+{saleResult.pointsEarned} pts</span>
+                  </div>
+                )}
+                {saleResult.customerName && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-between font-semibold text-emerald-900">
+                      <span>Saldo actual</span>
+                      <span>⭐ {saleResult.newBalance} pts</span>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Botón WhatsApp (solo si hay cliente con teléfono) */}
               {saleResult.customerPhone && saleResult.customerName && (
                 <Button
                   variant="outline"
@@ -242,179 +236,207 @@ export function POSClient({
   }
 
   // ── POS principal ─────────────────────────────────────────────────────────
+  // Mobile: columna única. Landscape tablet (lg+): dos columnas fijas, sin scroll.
   return (
-    <div className="max-w-md mx-auto space-y-4 page-enter motion-stagger">
+    <>
+      <div className="
+        page-enter motion-stagger
+        max-w-md mx-auto space-y-3
+        lg:max-w-none lg:space-y-0
+        lg:grid lg:grid-cols-2 lg:gap-4
+        lg:h-[calc(100svh-8rem)]
+      ">
 
-      {/* 1. Buscar cliente */}
-      <Card className="lift-hover bg-black text-white border-black">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base text-white">1. Cliente (opcional)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PhoneSearch
-            tone="dark"
-            onCustomerFound={(c) => {
-              setCustomer(c)
-              setTimeout(() => totalRef.current?.focus(), 100)
-            }}
-            onCustomerCleared={() => {
-              setCustomer(null)
-              setPointsToRedeem(0)
-              setDiscountByPoints(0)
-            }}
-            onRegisterNew={(phone) => {
-              setRegisterPhone(phone)
-              setShowRegister(true)
-            }}
-          />
-        </CardContent>
-      </Card>
+        {/* ── COLUMNA IZQUIERDA: Cliente ────────────────────────────── */}
+        <div className="space-y-3 lg:flex lg:flex-col lg:gap-3 lg:overflow-hidden lg:space-y-0">
 
-      {/* 2. Total del ticket */}
-      <Card className="lift-hover bg-black text-white border-black">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base text-white">2. Total del ticket</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-black/60 font-medium">
-              $
-            </span>
-            <Input
-              ref={totalRef}
-              value={totalInput}
-              onChange={(e) => setTotalInput(normalizeAmountInput(e.target.value))}
-              onKeyDown={(e) => e.key === 'Enter' && handleSale()}
-              placeholder="0.00"
-              className="pl-7 text-2xl h-14 font-mono font-semibold bg-white text-black placeholder:text-black/50 border-white"
-              inputMode="decimal"
-            />
+          {/* Cliente */}
+          <Card className="lift-hover bg-black text-white border-black lg:shrink-0">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="text-sm font-semibold text-white/70 uppercase tracking-wide">
+                1. Cliente (opcional)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pb-4">
+              <PhoneSearch
+                tone="dark"
+                onCustomerFound={(c) => {
+                  setCustomer(c)
+                  setTimeout(() => totalRef.current?.focus(), 100)
+                }}
+                onCustomerCleared={() => {
+                  setCustomer(null)
+                  setPointsToRedeem(0)
+                  setDiscountByPoints(0)
+                }}
+                onRegisterNew={(phone) => {
+                  setRegisterPhone(phone)
+                  setShowRegister(true)
+                }}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Canjear puntos + productos canjeables — scrollable dentro de la columna */}
+          <div className="space-y-3 lg:flex-1 lg:overflow-y-auto lg:space-y-3">
+
+            {customer && customer.total_points > 0 && rawTotal > 0 && (
+              <Card className="lift-hover bg-black text-white border-black">
+                <CardContent className="pt-4 pb-4">
+                  <PointsDisplay
+                    tone="dark"
+                    currentPoints={customer.total_points}
+                    subtotal={rawTotal}
+                    config={pointsConfig}
+                    onRedemptionChange={(pts, disc) => {
+                      setPointsToRedeem(pts)
+                      setDiscountByPoints(disc)
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {customer && redeemableProducts.length > 0 && (
+              <Card className="lift-hover border-purple-200 dark:border-purple-800">
+                <CardHeader className="pb-2 pt-4">
+                  <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Productos canjeables
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pb-4">
+                  <RedeemablesButtons
+                    products={redeemableProducts}
+                    customerPoints={customer.total_points}
+                    customerId={customer.id}
+                    onRedemptionSuccess={(newBalance) => {
+                      setCustomer(prev => prev ? { ...prev, total_points: newBalance } : null)
+                      if (saleResult) {
+                        const sale = saleResult as SaleSuccess
+                        if (sale.customerPhone && sale.customerName) {
+                          setTimeout(() => { handleSendWhatsApp(newBalance) }, 500)
+                        }
+                      }
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Placeholder cuando no hay cliente */}
+            {!customer && (
+              <div className="hidden lg:flex flex-1 items-center justify-center rounded-xl border border-dashed border-white/10 text-white/30 text-sm">
+                Busca un cliente para ver sus puntos
+              </div>
+            )}
           </div>
 
-          {/* Multiplicador de puntos (solo si hay cliente) */}
-          {customer && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-white/70 text-center">Puntos bonus</p>
-              <div className="grid grid-cols-3 gap-2">
-                {([1, 2, 3] as const).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setMultiplier(m)}
-                    className={`py-1.5 rounded-lg border-2 text-sm font-semibold transition-colors ${
-                      multiplier === m
-                        ? m === 1
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        : 'border-white/20 text-white/80 hover:border-white/50'
-                    }`}
-                  >
-                    {m === 1 ? 'x1' : m === 2 ? '⭐ x2' : '🌟 x3'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        </div>
 
-          {/* Preview de puntos que va a ganar */}
-          {rawTotal > 0 && customer && pointsEarned > 0 && (
-            <p className="text-sm text-center text-white/80">
-              El cliente ganará{' '}
-              <span className={`font-semibold ${multiplier > 1 ? 'text-yellow-400' : 'text-white'}`}>
-                +{pointsEarned} punto{pointsEarned !== 1 ? 's' : ''}
-              </span>
-              {multiplier > 1 && (
-                <span className="text-xs ml-1 text-white/70">(x{multiplier} bonus)</span>
+        {/* ── COLUMNA DERECHA: Ticket ───────────────────────────────── */}
+        <div className="space-y-3 lg:flex lg:flex-col lg:gap-3 lg:space-y-0">
+
+          {/* Total */}
+          <Card className="lift-hover bg-black text-white border-black lg:flex-1">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="text-sm font-semibold text-white/70 uppercase tracking-wide">
+                2. Total del ticket
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pb-4 space-y-4">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-black/60 font-medium">$</span>
+                <Input
+                  ref={totalRef}
+                  value={totalInput}
+                  onChange={(e) => setTotalInput(normalizeAmountInput(e.target.value))}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSale()}
+                  placeholder="0.00"
+                  className="pl-7 text-3xl h-16 font-mono font-semibold bg-white text-black placeholder:text-black/50 border-white"
+                  inputMode="decimal"
+                />
+              </div>
+
+              {/* Multiplicador */}
+              {customer && (
+                <div className="space-y-2">
+                  <p className="text-xs text-white/70 text-center">Puntos bonus</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([1, 2, 3] as const).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setMultiplier(m)}
+                        className={`py-2 rounded-lg border-2 text-sm font-semibold transition-colors ${
+                          multiplier === m
+                            ? m === 1
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            : 'border-white/20 text-white/80 hover:border-white/50'
+                        }`}
+                      >
+                        {m === 1 ? 'x1' : m === 2 ? '⭐ x2' : '🌟 x3'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-            </p>
-          )}
-          {rawTotal > 0 && !customer && (
-            <p className="text-xs text-center text-white/70">
-              Venta sin cliente — no acumula puntos
-            </p>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* 3. Canjear puntos (solo si hay cliente con puntos) */}
-      {customer && customer.total_points > 0 && rawTotal > 0 && (
-        <Card className="lift-hover">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">3. Canjear puntos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PointsDisplay
-              tone="dark"
-              currentPoints={customer.total_points}
-              subtotal={rawTotal}
-              config={pointsConfig}
-              onRedemptionChange={(pts, disc) => {
-                setPointsToRedeem(pts)
-                setDiscountByPoints(disc)
-              }}
-            />
-          </CardContent>
-        </Card>
-      )}
+              {rawTotal > 0 && customer && pointsEarned > 0 && (
+                <p className="text-sm text-center text-white/80">
+                  El cliente ganará{' '}
+                  <span className={`font-semibold ${multiplier > 1 ? 'text-yellow-400' : 'text-white'}`}>
+                    +{pointsEarned} punto{pointsEarned !== 1 ? 's' : ''}
+                  </span>
+                  {multiplier > 1 && (
+                    <span className="text-xs ml-1 text-white/70">(x{multiplier} bonus)</span>
+                  )}
+                </p>
+              )}
+              {rawTotal > 0 && !customer && (
+                <p className="text-xs text-center text-white/70">
+                  Venta sin cliente — no acumula puntos
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
-      {/* 4. Productos canjeables */}
-      {customer && redeemableProducts.length > 0 && (
-        <Card className="lift-hover border-purple-200 dark:border-purple-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">4. Productos canjeables</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RedeemablesButtons 
-              products={redeemableProducts} 
-              customerPoints={customer.total_points} 
-              customerId={customer.id}
-              onRedemptionSuccess={(newBalance) => {
-                // Actualizar puntos del cliente cuando se canjea un producto
-                setCustomer(prev => prev ? { ...prev, total_points: newBalance } : null);
-                
-                // Si hay una venta activa, resendear WhatsApp automáticamente con nuevos puntos
-                if (saleResult) {
-                  const sale = saleResult as SaleSuccess
-                  if (sale.customerPhone && sale.customerName) {
-                    setTimeout(() => {
-                      handleSendWhatsApp(newBalance);
-                    }, 500);
-                  }
-                }
-              }}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Resumen y cobrar */}
-      <Card className="lift-hover bg-black text-white border-black">
-        <CardContent className="pt-4 space-y-3">
-          {discountByPoints > 0 && (
-            <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between text-white/75">
-                <span>Ticket</span>
-                <span>${rawTotal.toFixed(2)}</span>
+          {/* Resumen y cobrar */}
+          <Card className="lift-hover bg-black text-white border-black lg:shrink-0">
+            <CardContent className="pt-4 pb-4 space-y-3">
+              {discountByPoints > 0 && (
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between text-white/75">
+                    <span>Ticket</span>
+                    <span>${rawTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-green-400">
+                    <span>Descuento puntos</span>
+                    <span>−${discountByPoints.toFixed(2)}</span>
+                  </div>
+                  <Separator className="bg-white/20" />
+                </div>
+              )}
+              <div className="flex justify-between text-xl font-bold">
+                <span>Total a cobrar</span>
+                <span>${finalTotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-green-400">
-                <span>Descuento puntos</span>
-                <span>−${discountByPoints.toFixed(2)}</span>
-              </div>
-              <Separator />
-            </div>
-          )}
-          <div className="flex justify-between text-lg font-bold">
-            <span>Total a cobrar</span>
-            <span>${finalTotal.toFixed(2)}</span>
-          </div>
-          <Button
-            className="w-full h-12 text-base bg-white text-black hover:bg-white/90"
-            onClick={handleSale}
-            disabled={processing || rawTotal <= 0}
-          >
-            {processing ? 'Registrando...' : `Registrar $${finalTotal.toFixed(2)}`}
-          </Button>
-        </CardContent>
-      </Card>
+              <Button
+                className="w-full h-14 text-lg font-bold bg-white text-black hover:bg-white/90"
+                onClick={handleSale}
+                disabled={processing || rawTotal <= 0}
+              >
+                {processing ? (
+                  <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Registrando...</>
+                ) : (
+                  `Registrar $${finalTotal.toFixed(2)}`
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+        </div>
+
+      </div>
 
       <RegisterModal
         open={showRegister}
@@ -422,6 +444,6 @@ export function POSClient({
         onClose={() => setShowRegister(false)}
         onRegistered={handleRegistered}
       />
-    </div>
+    </>
   )
 }
