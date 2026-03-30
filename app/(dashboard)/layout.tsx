@@ -44,11 +44,14 @@ export default async function DashboardLayout({
     }
   }
 
-  // Resolve plan name for sidebar indicator
+  // Resolve plan name for sidebar indicator — only show when subscription is active
   let planSlug: string | null = null
   let planName: string | null = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const planId = (business as any)?.plan_id ?? null
+  const planStatus: string | null = (business as any)?.plan_status ?? null
+  const hasActivePlan = ['active', 'trialing', 'cancelling'].includes(planStatus ?? '')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const planId = hasActivePlan ? ((business as any)?.plan_id ?? null) : null
   if (planId) {
     const { data: plan } = await supabase
       .from('subscription_plans')

@@ -82,19 +82,32 @@ async function ensureMonthlyFinancePeriod(
     reset_mode: 'carry_over',
   }
 
-  const { data: createdPeriod, error } = await supabase
+  // ON CONFLICT handles the race condition where two simultaneous first-sales
+  // of the month both try to create the period.
+  const { error: insertError } = await supabase
     .from('finance_periods')
     .insert(insert)
     .select('id')
     .single()
 
-  // Si no puede crear el período, lo ignora pero permite la venta de todas formas
-  if (error || !createdPeriod) {
-    // Retorna un id genérico para que la venta continue (no es bloqueante)
-    return { id: 'temp-period-' + Date.now() }
+  if (insertError && insertError.code !== '23505') {
+    // 23505 = unique_violation (already created by a concurrent request)
+    return { error: 'Error al crear período financiero.' }
   }
 
-  return { id: createdPeriod.id }
+  // Re-select to get the id whether we just created it or it already existed.
+  const { data: period } = await supabase
+    .from('finance_periods')
+    .select('id')
+    .eq('business_id', businessId)
+    .eq('period_type', 'month')
+    .eq('period_start', startDate)
+    .eq('period_end', endDate)
+    .single()
+
+  if (!period) return { error: 'No se pudo obtener el período financiero.' }
+
+  return { id: period.id }
 }
 
 export async function createSale(payload: SalePayload): Promise<SaleResult> {
@@ -189,39 +202,33 @@ export async function createSale(payload: SalePayload): Promise<SaleResult> {
     return { success: false, error: 'Error al registrar la venta.' }
   }
 
-  // ── Ledger de puntos ────────────────────────────────────────────────────────
+  // ── Ledger de puntos (atómico con SELECT FOR UPDATE) ───────────────────────
   let newBalance = customerCurrentBalance
 
   if (payload.customerId) {
-    // 1. Primero descontar puntos canjeados
-    if (pointsRedeemed > 0) {
-      newBalance = customerCurrentBalance - pointsRedeemed
-      await supabase.from('points_ledger').insert({
-        business_id: businessId,
-        customer_id: payload.customerId,
-        transaction_id: transaction.id,
-        type: 'redeem',
-        points_delta: -pointsRedeemed,
-        balance_after: newBalance,
-        note: `Canje en ticket ${transaction.ticket_number}`,
-      })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: rpcRows, error: rpcError } = await (supabase as any).rpc('process_points_atomic', {
+      p_business_id:    businessId,
+      p_customer_id:    payload.customerId,
+      p_points_redeem:  pointsRedeemed,
+      p_points_earn:    pointsEarned,
+      p_transaction_id: transaction.id,
+      p_ticket_number:  transaction.ticket_number ?? '',
+    })
+
+    if (rpcError) {
+      console.error('[createSale] points RPC error:', rpcError)
+      return { success: false, error: 'Error al procesar puntos.' }
     }
 
-    // 2. Agregar puntos ganados
-    if (pointsEarned > 0) {
-      newBalance = newBalance + pointsEarned
-      await supabase.from('points_ledger').insert({
-        business_id: businessId,
-        customer_id: payload.customerId,
-        transaction_id: transaction.id,
-        type: 'earn',
-        points_delta: pointsEarned,
-        balance_after: newBalance,
-        note: `Venta ticket ${transaction.ticket_number}`,
-      })
+    const rpcResult = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows
+    if (rpcResult?.error_msg) {
+      return { success: false, error: rpcResult.error_msg }
     }
 
-    // 3. Actualizar stats del cliente (incluyendo total_points)
+    newBalance = rpcResult?.new_balance ?? customerCurrentBalance
+
+    // Actualizar stats del cliente (lifetime_spend, visit_count)
     const { data: currentCustomer } = await supabase
       .from('customers')
       .select('lifetime_spend, visit_count')
@@ -231,10 +238,9 @@ export async function createSale(payload: SalePayload): Promise<SaleResult> {
     await supabase
       .from('customers')
       .update({
-        total_points: newBalance,
         lifetime_spend: (currentCustomer?.lifetime_spend ?? 0) + total,
-        visit_count: (currentCustomer?.visit_count ?? 0) + 1,
-        last_visit_at: new Date().toISOString(),
+        visit_count:    (currentCustomer?.visit_count ?? 0) + 1,
+        last_visit_at:  new Date().toISOString(),
       })
       .eq('id', payload.customerId)
   }
