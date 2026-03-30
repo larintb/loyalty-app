@@ -228,19 +228,21 @@ export async function createCheckoutSession(
         .eq('business_id', context.businessId)
         .maybeSingle()
 
-      const dbHasSub = existingSub && ['trialing', 'active', 'past_due'].includes(existingSub.status)
+      // Cualquier suscripción previa (incluyendo canceladas) bloquea el trial
+      const dbHasSub = existingSub && ['trialing', 'active', 'past_due', 'cancelled'].includes(existingSub.status)
 
-      // Segunda verificación directa en Stripe para cubrir el caso de race condition
-      // donde la DB aún no fue actualizada pero Stripe ya tiene la suscripción
+      // Segunda verificación directa en Stripe para cubrir race conditions
+      // y detectar suscripciones canceladas que aún no están en DB
       let stripeHasSub = false
       if (!dbHasSub && stripeCustomerId) {
         const stripeSubs = await stripe.subscriptions.list({
           customer: stripeCustomerId,
           status: 'all',
-          limit: 5,
+          limit: 10,
         })
+        // incomplete_expired = checkout que nunca se pagó (no cuenta como trial usado)
         stripeHasSub = stripeSubs.data.some((s) =>
-          ['trialing', 'active', 'past_due'].includes(s.status)
+          ['trialing', 'active', 'past_due', 'canceled', 'unpaid'].includes(s.status)
         )
       }
 
@@ -456,10 +458,27 @@ export async function createSubscription(planId: string, paymentMethodId: string
       invoice_settings: { default_payment_method: paymentMethodId },
     })
 
+    // Verificar elegibilidad para trial (igual que en checkout)
+    const { data: existingSubDirect } = await (admin as any)
+      .from('stripe_subscriptions')
+      .select('status')
+      .eq('business_id', context.businessId)
+      .maybeSingle()
+    const dbHasSubDirect = existingSubDirect &&
+      ['trialing', 'active', 'past_due', 'cancelled'].includes(existingSubDirect.status)
+    let stripeHasSubDirect = false
+    if (!dbHasSubDirect) {
+      const prevSubs = await stripe.subscriptions.list({ customer: stripeCustomerId, status: 'all', limit: 10 })
+      stripeHasSubDirect = prevSubs.data.some((s) =>
+        ['trialing', 'active', 'past_due', 'canceled', 'unpaid'].includes(s.status)
+      )
+    }
+    const trialDays = (!dbHasSubDirect && !stripeHasSubDirect) ? 7 : undefined
+
     const subscription = await stripe.subscriptions.create({
       customer: stripeCustomerId,
       items: [{ price: stripePriceId }],
-      trial_period_days: 7,
+      ...(trialDays ? { trial_period_days: trialDays } : {}),
       payment_settings: {
         save_default_payment_method: 'on_subscription',
         payment_method_types: ['card'],
