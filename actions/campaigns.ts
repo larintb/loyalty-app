@@ -21,11 +21,38 @@ type CampaignRules = {
   quietHoursEnd: number
 }
 
+type CampaignPlanMeta = {
+  planSlug: string | null
+  planStatus: string | null
+  isTrial: boolean
+}
+
+type CampaignQuotaResult = {
+  allowed: boolean
+  reason: string
+  weekly_used: number | null
+  weekly_limit: number | null
+  monthly_used: number | null
+  monthly_limit: number | null
+}
+
+export type CampaignQuotaSummary = {
+  mode: 'pro_limited' | 'trial_unlimited' | 'premium_unlimited' | 'not_available'
+  availableCampaigns: number | null
+  weeklyRemaining: number | null
+  weeklyLimit: number | null
+  monthlyRemaining: number | null
+  monthlyLimit: number | null
+  daysToReset: number | null
+  resetPeriod: 'week' | 'month' | null
+}
+
 export type CampaignSummary = {
   total: number
   running: number
   sentToday: number
   blockedToday: number
+  quota: CampaignQuotaSummary | null
 }
 
 export type CampaignListItem = {
@@ -137,17 +164,173 @@ function renderMessage(template: string, customerName: string, points: number, b
     .replaceAll('{{business_name}}', businessName)
 }
 
+async function getCampaignPlanMeta(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  businessId: string
+): Promise<CampaignPlanMeta> {
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('plan_id, plan_status, trial_ends_at')
+    .eq('id', businessId)
+    .maybeSingle()
+
+  const planId = (business as any)?.plan_id as string | null | undefined
+  let planSlug: string | null = null
+
+  if (planId) {
+    const { data: plan } = await supabase
+      .from('subscription_plans')
+      .select('slug')
+      .eq('id', planId)
+      .maybeSingle()
+
+    planSlug = (plan as any)?.slug ?? null
+  }
+
+  const planStatus = ((business as any)?.plan_status ?? null) as string | null
+  const trialEndsAtRaw = (business as any)?.trial_ends_at as string | null | undefined
+  const trialEndsAt = trialEndsAtRaw ? new Date(trialEndsAtRaw) : null
+  const isTrial = planStatus === 'trialing' && !!trialEndsAt && trialEndsAt.getTime() > Date.now()
+
+  return { planSlug, planStatus, isTrial }
+}
+
+function getCampaignQuotaErrorMessage(quota: CampaignQuotaResult): string {
+  if (quota.reason === 'weekly_limit_reached') {
+    return 'Plan Pro: ya usaste tu campaña de esta semana (1 por semana). Para envíos ilimitados, cambia a Premium.'
+  }
+
+  if (quota.reason === 'monthly_limit_reached') {
+    return 'Plan Pro: alcanzaste el límite mensual de 4 campañas. Para envíos ilimitados, cambia a Premium.'
+  }
+
+  if (quota.reason === 'plan_not_allowed') {
+    return 'Tu plan no incluye campañas. Cambia a Pro o Premium para enviar campañas.'
+  }
+
+  return 'No se pudo reservar la cuota de campañas en este momento. Intenta de nuevo.'
+}
+
+function toUtcDateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+function daysUntil(target: Date): number {
+  const diff = target.getTime() - Date.now()
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+}
+
+async function getCampaignQuotaSummary(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  businessId: string,
+  planMeta: CampaignPlanMeta
+): Promise<CampaignQuotaSummary | null> {
+  if (planMeta.isTrial) {
+    return {
+      mode: 'trial_unlimited',
+      availableCampaigns: null,
+      weeklyRemaining: null,
+      weeklyLimit: null,
+      monthlyRemaining: null,
+      monthlyLimit: null,
+      daysToReset: null,
+      resetPeriod: null,
+    }
+  }
+
+  if (planMeta.planSlug === 'unlimited') {
+    return {
+      mode: 'premium_unlimited',
+      availableCampaigns: null,
+      weeklyRemaining: null,
+      weeklyLimit: null,
+      monthlyRemaining: null,
+      monthlyLimit: null,
+      daysToReset: null,
+      resetPeriod: null,
+    }
+  }
+
+  if (planMeta.planSlug !== 'growth') {
+    return {
+      mode: 'not_available',
+      availableCampaigns: 0,
+      weeklyRemaining: 0,
+      weeklyLimit: null,
+      monthlyRemaining: 0,
+      monthlyLimit: null,
+      daysToReset: null,
+      resetPeriod: null,
+    }
+  }
+
+  const now = new Date()
+  const utcDay = now.getUTCDay()
+  const daysFromMonday = (utcDay + 6) % 7
+  const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysFromMonday))
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+
+  const weekStartKey = toUtcDateOnly(weekStart)
+  const monthStartKey = toUtcDateOnly(monthStart)
+
+  const { data: quotaRows, error } = await supabase
+    .from('marketing_campaign_send_quotas' as any)
+    .select('period_type, sends_used, period_start')
+    .eq('business_id', businessId)
+    .in('period_type', ['week', 'month'])
+    .in('period_start', [weekStartKey, monthStartKey])
+
+  if (error) {
+    return null
+  }
+
+  const quotaRowsList = ((quotaRows ?? []) as unknown) as Array<{
+    period_type: 'week' | 'month'
+    sends_used: number | null
+    period_start: string
+  }>
+
+  const weeklyUsed = Number(quotaRowsList.find((r) => r.period_type === 'week')?.sends_used ?? 0)
+  const monthlyUsed = Number(quotaRowsList.find((r) => r.period_type === 'month')?.sends_used ?? 0)
+
+  const weeklyLimit = 1
+  const monthlyLimit = 4
+  const weeklyRemaining = Math.max(0, weeklyLimit - weeklyUsed)
+  const monthlyRemaining = Math.max(0, monthlyLimit - monthlyUsed)
+  const availableCampaigns = Math.max(0, Math.min(weeklyRemaining, monthlyRemaining))
+
+  const nextWeekStart = new Date(weekStart)
+  nextWeekStart.setUTCDate(nextWeekStart.getUTCDate() + 7)
+  const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+
+  const resetPeriod: 'week' | 'month' = availableCampaigns === 0 && monthlyRemaining === 0 ? 'month' : 'week'
+  const resetDate = resetPeriod === 'month' ? nextMonthStart : nextWeekStart
+
+  return {
+    mode: 'pro_limited',
+    availableCampaigns,
+    weeklyRemaining,
+    weeklyLimit,
+    monthlyRemaining,
+    monthlyLimit,
+    daysToReset: daysUntil(resetDate),
+    resetPeriod,
+  }
+}
+
 export async function getCampaignPageData(): Promise<CampaignPageData> {
   const businessId = await getCachedBusinessId()
 
   if (!businessId) {
     return {
-      summary: { total: 0, running: 0, sentToday: 0, blockedToday: 0 },
+      summary: { total: 0, running: 0, sentToday: 0, blockedToday: 0, quota: null },
       campaigns: [],
     }
   }
 
   const supabase = await createClient()
+  const planMeta = await getCampaignPlanMeta(supabase, businessId)
+  const quota = await getCampaignQuotaSummary(supabase, businessId, planMeta)
   const { data: campaigns } = await supabase
     .from('marketing_campaigns' as any)
     .select('id, name, status, created_at, scheduled_at, message_body, image_url, segment_json')
@@ -222,6 +405,7 @@ export async function getCampaignPageData(): Promise<CampaignPageData> {
     running: normalizedCampaigns.filter((c) => c.status === 'running').length,
     sentToday,
     blockedToday,
+    quota,
   }
 
   return { summary, campaigns: normalizedCampaigns }
@@ -391,39 +575,79 @@ async function prepareAudience(campaignId: string, businessId: string) {
   }
 }
 
-export async function launchCampaign(campaignId: string): Promise<{ success: boolean; error?: string; message?: string }> {
+export async function launchCampaign(campaignId: string): Promise<{
+  success: boolean
+  error?: string
+  message?: string
+  queuedCount?: number
+}> {
   const supabase = await createClient()
   const context = await getBusinessContext(supabase)
 
   if (!context) return { success: false, error: 'No autenticado.' }
 
+  const planMeta = await getCampaignPlanMeta(supabase, context.businessId)
+
+  if (!planMeta.isTrial && !['growth', 'unlimited'].includes(planMeta.planSlug ?? '')) {
+    return { success: false, error: 'Tu plan actual no permite campañas. Cambia a Pro o Premium.' }
+  }
+
   const prep = await prepareAudience(campaignId, context.businessId)
   if ('error' in prep) return { success: false, error: prep.error }
+
+  if (prep.campaign.status !== 'draft' && prep.campaign.status !== 'scheduled') {
+    return { success: false, error: 'Solo se pueden iniciar campañas en borrador o programadas.' }
+  }
+
+  if (prep.queuedCount > 0 && !planMeta.isTrial && planMeta.planSlug === 'growth') {
+    const rpcClient = supabase as any
+    const { data: quotaData, error: quotaError } = await rpcClient.rpc('reserve_campaign_send_quota', {
+      p_business_id: context.businessId,
+      p_plan_slug: planMeta.planSlug,
+      p_is_trial: false,
+      p_now: new Date().toISOString(),
+    })
+
+    if (quotaError) {
+      return { success: false, error: 'No se pudo validar tu cuota de campañas. Intenta de nuevo.' }
+    }
+
+    const quotaResult = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as CampaignQuotaResult | null
+
+    if (!quotaResult?.allowed) {
+      return { success: false, error: getCampaignQuotaErrorMessage(quotaResult ?? {
+        allowed: false,
+        reason: 'unknown',
+        weekly_used: null,
+        weekly_limit: null,
+        monthly_used: null,
+        monthly_limit: null,
+      }) }
+    }
+  }
+
+  const nowIso = new Date().toISOString()
+  const nextStatus = prep.queuedCount > 0 ? 'running' : 'completed'
 
   await supabase
     .from('marketing_campaigns' as any)
     .update({
-      status: 'running',
-      started_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      status: nextStatus,
+      started_at: nowIso,
+      finished_at: prep.queuedCount > 0 ? null : nowIso,
+      updated_at: nowIso,
     })
     .eq('id', campaignId)
     .eq('business_id', context.businessId)
 
-  const batch = await processCampaignBatchInternal(
-    campaignId,
-    context.businessId,
-    prep.campaign.message_body,
-    prep.campaign.image_url ?? null,
-    30
-  )
-
   revalidatePath('/campaigns')
-  if (!batch.success) return batch
 
   return {
     success: true,
-    message: `Campana iniciada. Enviados ${batch.sent ?? 0} en el primer lote.`,
+    message: prep.queuedCount > 0
+      ? `Campana iniciada con ${prep.queuedCount} destinatarios en cola.`
+      : 'Campana iniciada sin destinatarios elegibles.',
+    queuedCount: prep.queuedCount,
   }
 }
 

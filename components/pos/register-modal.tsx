@@ -174,7 +174,7 @@ export function RegisterModal({ open, defaultPhone, onClose, onRegistered }: Pro
         <DialogHeader>
           <DialogTitle>Registrar nuevo cliente</DialogTitle>
           <DialogDescription>
-            El cliente acumulará puntos desde esta venta.
+            El cliente acumulará puntos desde esta venta. También recibirá un WhatsApp de bienvenida con sus puntos y, si existen, el teléfono y dirección del negocio.
           </DialogDescription>
         </DialogHeader>
 

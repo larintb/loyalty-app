@@ -34,6 +34,7 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [redirectingToCheckout, setRedirectingToCheckout] = useState(false)
   const [showRelativeCost, setShowRelativeCost] = useState(false)
   const [syncingCheckout, setSyncingCheckout] = useState(Boolean(checkoutStatus === 'success' && checkoutSessionId))
   const [successData, setSuccessData] = useState<{ planSlug: string } | null>(null)
@@ -75,6 +76,8 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
     name: businessName,
     phone: '',
     address: '',
+    logoPreview: null as string | null,
+    logoUrl: '',
     earn_rate: '10',
     earn_per_amount: '1',
     redeem_value: '0.01',
@@ -83,7 +86,7 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
     selectedPlan: '',
   })
 
-  function update(key: string, value: string) {
+  function update(key: string, value: string | null) {
     setForm((p) => ({ ...p, [key]: value }))
   }
 
@@ -130,6 +133,7 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
     }
 
     toast.success('Te estamos llevando a Stripe...')
+    setRedirectingToCheckout(true)
     window.location.assign(checkoutUrl)
   }
 
@@ -137,14 +141,26 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
     return <SuccessScreen planSlug={successData.planSlug} plans={plans} onContinue={() => { router.replace('/dashboard'); router.refresh() }} />
   }
 
+  if (redirectingToCheckout) {
+    return (
+      <LoadingScreen
+        title="Te estamos redireccionando a Stripe"
+        subtitle="En unos segundos se abrirá el checkout seguro para activar tu prueba."
+      />
+    )
+  }
+
+  if (syncingCheckout) {
+    return (
+      <LoadingScreen
+        title="Estamos confirmando tu pago"
+        subtitle="Esto tarda unos segundos. Te llevaremos al resumen en automático."
+      />
+    )
+  }
+
   return (
     <div className="space-y-8">
-      {syncingCheckout && (
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800">
-          Activando tu plan... Esto tarda unos segundos.
-        </div>
-      )}
-
       {checkoutStatus === 'cancelled' && !syncingCheckout && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Checkout cancelado. Para continuar, debes elegir un plan y completar Stripe.
@@ -158,9 +174,9 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
             <div className="flex flex-col items-center gap-1.5">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
                 i < step
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-black text-white'
                   : i === step
-                    ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
+                    ? 'bg-black text-white ring-4 ring-black/15'
                     : 'bg-white border-2 border-border text-muted-foreground'
               }`}>
                 {i < step ? <Check className="h-4 w-4" /> : <span>{i + 1}</span>}
@@ -171,7 +187,7 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
             </div>
             {i < STEPS.length - 1 && (
               <div className="flex-1 h-px mx-2 -mt-3.5 transition-colors duration-300"
-                style={{ backgroundColor: i < step ? 'hsl(var(--primary))' : '#e5e7eb' }}
+                style={{ backgroundColor: i < step ? '#111111' : '#e5e7eb' }}
               />
             )}
           </div>
@@ -180,7 +196,7 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
 
       {/* ── Step 0: Negocio ── */}
       {step === 0 && (
-        <div className="page-enter space-y-6">
+        <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Tu negocio</h1>
             <p className="text-muted-foreground text-sm mt-1">
@@ -191,9 +207,11 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
           {/* Logo centrado */}
           <div className="flex justify-center py-2">
             <LogoUpload
-              currentUrl={null}
+              preview={form.logoPreview}
+              onPreviewChange={(preview) => update('logoPreview', preview)}
+              currentUrl={form.logoUrl}
               businessName={form.name}
-              onUploaded={() => {}}
+              onUploaded={(url) => update('logoUrl', url)}
               variant="centered"
             />
           </div>
@@ -239,6 +257,9 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
                 />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Teléfono y dirección son opcionales. Si los agregas, también aparecerán en el mensaje de bienvenida que recibe cada cliente al registrarse.
+            </p>
           </div>
 
           <Button
@@ -253,7 +274,7 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
 
       {/* ── Step 1: Puntos ── */}
       {step === 1 && (
-        <div className="page-enter space-y-6">
+        <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Programa de puntos</h1>
             <p className="text-muted-foreground text-sm mt-1">
@@ -314,7 +335,7 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
 
       {/* ── Step 2: Plan ── */}
       {step === 2 && (
-        <div className="page-enter space-y-6">
+        <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Elige tu plan</h1>
             <p className="text-muted-foreground text-sm mt-1">
@@ -512,6 +533,18 @@ export function OnboardingClient({ businessName, plans, checkoutStatus, checkout
   )
 }
 
+function LoadingScreen({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="w-full max-w-md rounded-2xl border bg-white px-6 py-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 h-10 w-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+      </div>
+    </div>
+  )
+}
+
 // ── Success Screen ────────────────────────────────────────────────
 function SuccessScreen({ planSlug, plans, onContinue }: {
   planSlug: string
@@ -606,10 +639,8 @@ function SuccessScreen({ planSlug, plans, onContinue }: {
           </p>
           <ul className="space-y-1 text-muted-foreground list-disc list-inside">
             <li>RFC</li>
-            <li>Razón social</li>
-            <li>Dirección fiscal completa (incluyendo código postal)</li>
-            <li>Uso de CFDI (ej. G03 – Gastos en general)</li>
-            <li>Régimen fiscal</li>
+            <li>Constancia de Situación Fiscal (CSF)</li>
+            <li>Uso de CFDI (ej. G03 - Gastos en general)</li>
             <li>Correo electrónico para recibir la factura</li>
           </ul>
         </div>

@@ -31,13 +31,25 @@ export default async function CampaignsPage() {
 
   return (
     <div className="space-y-5 page-enter">
-      {access.showBanner && (
+      {access.showBanner && !access.isTrial && (
         <PlanBanner
           featureLabel={FEATURE_LABELS.campaigns}
           requiredPlanName={access.requiredPlanName!}
           daysLeft={access.daysLeft}
         />
       )}
+
+      {access.isTrial && (
+        <div className="rounded-xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-semibold">Estás en trial: campañas ilimitadas por promoción</p>
+          <p className="mt-1 text-amber-800/90">
+            Durante tu periodo de prueba puedes enviar campañas sin límite.
+            {access.daysLeft > 0 ? ` Te quedan ${access.daysLeft} días de trial.` : ''} Al terminar,
+            para mantener campañas ilimitadas necesitas el plan Premium.
+          </p>
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold">Campañas WhatsApp</h1>
         <p className="text-muted-foreground text-sm">

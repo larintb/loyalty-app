@@ -12,13 +12,19 @@ type Props = {
   currentUrl: string | null
   businessName: string
   businessId?: string
+  preview?: string | null
+  onPreviewChange?: (preview: string | null) => void
   onUploaded: (url: string) => void
   variant?: 'row' | 'centered'
 }
 
-export function LogoUpload({ currentUrl, businessName, onUploaded, variant = 'row' }: Props) {
-  // preview holds the objectUrl during upload, then the public URL after success
-  const [preview, setPreview] = useState<string | null>(currentUrl)
+export function LogoUpload({ currentUrl, businessName, preview: controlledPreview, onPreviewChange, onUploaded, variant = 'row' }: Props) {
+  // Si preview es controlado (pasado como prop con callback), úsalo; sino usa estado local
+  const isControlled = controlledPreview !== undefined && onPreviewChange !== undefined
+  const [localPreview, setLocalPreview] = useState<string | null>(currentUrl)
+  const preview = isControlled ? controlledPreview : localPreview
+  const setPreview = isControlled ? onPreviewChange : setLocalPreview
+  
   const [uploading, setUploading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -44,7 +50,7 @@ export function LogoUpload({ currentUrl, businessName, onUploaded, variant = 'ro
       const urlResult = await getLogoUploadUrl(file.name)
       if (urlResult.error || !urlResult.signedUrl || !urlResult.publicUrl) {
         toast.error(urlResult.error ?? 'Error al preparar la subida.')
-        setPreview(currentUrl) // revertir al logo anterior
+        setPreview(null) // limpiar preview en caso de error
         return
       }
 
@@ -57,7 +63,7 @@ export function LogoUpload({ currentUrl, businessName, onUploaded, variant = 'ro
 
       if (!uploadRes.ok) {
         toast.error('Error al subir la imagen.')
-        setPreview(currentUrl)
+        setPreview(null)
         return
       }
 
@@ -66,7 +72,7 @@ export function LogoUpload({ currentUrl, businessName, onUploaded, variant = 'ro
       const saveResult = await saveBusinessLogoUrl(freshUrl)
       if (saveResult.error) {
         toast.error(saveResult.error)
-        setPreview(currentUrl)
+        setPreview(null)
         return
       }
 

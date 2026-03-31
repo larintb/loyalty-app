@@ -38,6 +38,24 @@ type Props = {
   initialData: CampaignPageData
 }
 
+const SEND_BATCH_SIZE = 30
+
+type SendProgressStage = 'preparando' | 'enviando' | 'finalizado' | 'error'
+
+type SendProgressState = {
+  open: boolean
+  campaignId: string
+  stage: SendProgressStage
+  totalRecipients: number
+  processedRecipients: number
+  sent: number
+  failed: number
+  currentBatch: number
+  totalBatches: number
+  statusText: string
+  errorMessage?: string
+}
+
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',
   scheduled: 'Programada',
@@ -306,6 +324,7 @@ export function CampaignsClient({ initialData }: Props) {
   const [isPending, startTransition] = useTransition()
   const [uploadingImage, setUploadingImage] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [sendProgress, setSendProgress] = useState<SendProgressState | null>(null)
 
   // Sheet de creación
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -315,7 +334,7 @@ export function CampaignsClient({ initialData }: Props) {
     imageUrl: '',
     imagePreview: '',
     messageBody:
-      'Hola {{name}} 👋\n\nTienes *{{points}} puntos* en {{business_name}} y esta semana los puedes aprovechar al máximo.\n\nTenemos un beneficio exclusivo para clientes frecuentes como tú. ¿Te interesa?\n\nResponde *SÍ* y te damos todos los detalles 🎁',
+      'Hola {{name}} 👋\n\nTienes *{{points}} puntos* en {{business_name}} y esta semana los puedes aprovechar al máximo.\n\nTenemos un beneficio exclusivo para clientes frecuentes como tú.',
   })
 
   // Dialog preview (para campañas existentes en borrador)
@@ -365,7 +384,7 @@ export function CampaignsClient({ initialData }: Props) {
       imageUrl: '',
       imagePreview: '',
       messageBody:
-        'Hola {{name}} 👋\n\nTienes *{{points}} puntos* en {{business_name}} y esta semana los puedes aprovechar al máximo.\n\nTenemos un beneficio exclusivo para clientes frecuentes como tú. ¿Te interesa?\n\nResponde *SÍ* y te damos todos los detalles 🎁',
+        'Hola {{name}} 👋\n\nTienes *{{points}} puntos* en {{business_name}} y esta semana los puedes aprovechar al máximo.\n\nTenemos un beneficio exclusivo para clientes frecuentes como tú.',
     })
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -445,18 +464,130 @@ export function CampaignsClient({ initialData }: Props) {
     }
   }
 
-  function handleLaunch(campaignId: string) {
-    startTransition(async () => {
-      const result = await launchCampaign(campaignId)
-      if (!result.success) { toast.error(result.error ?? 'No se pudo iniciar la campaña.'); return }
-      toast.success(result.message ?? 'Campaña iniciada.')
-      router.refresh()
+  async function handleLaunch(campaignId: string) {
+    if (isSendingCampaign) return
+    if (!hasCampaignQuotaAvailable) {
+      const resetHint = quota?.daysToReset != null
+        ? ` Se restablece en ${quota.daysToReset} dia${quota.daysToReset === 1 ? '' : 's'}.`
+        : ''
+      toast.error(`Ya no te quedan campanas disponibles.${resetHint}`)
+      return
+    }
+
+    setSendProgress({
+      open: true,
+      campaignId,
+      stage: 'preparando',
+      totalRecipients: 0,
+      processedRecipients: 0,
+      sent: 0,
+      failed: 0,
+      currentBatch: 0,
+      totalBatches: 1,
+      statusText: 'Preparando audiencia y validando destinatarios...',
     })
+
+    try {
+      const launchResult = await launchCampaign(campaignId)
+
+      if (!launchResult.success) {
+        const message = launchResult.error ?? 'No se pudo iniciar la campaña.'
+        setSendProgress((prev) => prev ? {
+          ...prev,
+          stage: 'error',
+          statusText: 'Error al iniciar el envío.',
+          errorMessage: message,
+        } : prev)
+        toast.error(message)
+        return
+      }
+
+      const totalRecipients = Math.max(0, launchResult.queuedCount ?? 0)
+      const totalBatches = Math.max(1, Math.ceil(Math.max(totalRecipients, 1) / SEND_BATCH_SIZE))
+
+      let sent = 0
+      let failed = 0
+      let processed = 0
+      let currentBatch = 0
+
+      setSendProgress((prev) => prev ? {
+        ...prev,
+        stage: totalRecipients === 0 ? 'finalizado' : 'enviando',
+        totalRecipients,
+        processedRecipients: processed,
+        sent,
+        failed,
+        currentBatch,
+        totalBatches,
+        statusText: totalRecipients === 0
+          ? 'No hay destinatarios elegibles para enviar.'
+          : `Enviando lote ${Math.min(currentBatch + 1, totalBatches)}/${totalBatches}...`,
+      } : prev)
+
+      while (processed < totalRecipients) {
+        const batchResult = await processCampaignBatch(campaignId, SEND_BATCH_SIZE)
+
+        if (!batchResult.success) {
+          const message = batchResult.error ?? 'Se interrumpió el envío por un error en el lote.'
+          setSendProgress((prev) => prev ? {
+            ...prev,
+            stage: 'error',
+            statusText: 'Error durante el envío por lotes.',
+            errorMessage: message,
+          } : prev)
+          toast.error(message)
+          return
+        }
+
+        const sentInBatch = batchResult.sent ?? 0
+        const failedInBatch = batchResult.failed ?? 0
+        const processedInBatch = sentInBatch + failedInBatch
+
+        if (processedInBatch === 0) break
+
+        sent += sentInBatch
+        failed += failedInBatch
+        processed = Math.min(totalRecipients, processed + processedInBatch)
+        currentBatch += 1
+
+        setSendProgress((prev) => prev ? {
+          ...prev,
+          stage: processed >= totalRecipients ? 'finalizado' : 'enviando',
+          processedRecipients: processed,
+          sent,
+          failed,
+          currentBatch: Math.min(currentBatch, totalBatches),
+          statusText: processed >= totalRecipients
+            ? 'Envío completado.'
+            : `Enviando lote ${Math.min(currentBatch + 1, totalBatches)}/${totalBatches}...`,
+        } : prev)
+      }
+
+      setSendProgress((prev) => prev ? {
+        ...prev,
+        stage: prev.stage === 'error' ? 'error' : 'finalizado',
+        processedRecipients: totalRecipients,
+        currentBatch: totalRecipients > 0 ? totalBatches : 0,
+        statusText: totalRecipients === 0 ? 'No hubo envíos por falta de destinatarios elegibles.' : 'Envío finalizado.',
+      } : prev)
+
+      toast.success(`Campaña enviada. Enviados: ${sent}. Fallidos: ${failed}.`)
+      router.refresh()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado durante el envío.'
+      setSendProgress((prev) => prev ? {
+        ...prev,
+        stage: 'error',
+        statusText: 'Error inesperado durante el envío.',
+        errorMessage: message,
+      } : prev)
+      toast.error(message)
+    }
   }
 
   function handleProcess(campaignId: string) {
     startTransition(async () => {
-      const result = await processCampaignBatch(campaignId, 30)
+      const result = await processCampaignBatch(campaignId, SEND_BATCH_SIZE)
       if (!result.success) { toast.error(result.error ?? 'No se pudo procesar el lote.'); return }
       toast.success(`Lote procesado. Enviados: ${result.sent ?? 0}. Fallidos: ${result.failed ?? 0}.`)
       router.refresh()
@@ -501,6 +632,12 @@ export function CampaignsClient({ initialData }: Props) {
   }
 
   const stats = initialData.summary
+  const quota = stats.quota
+  const isSendingCampaign = sendProgress?.stage === 'preparando' || sendProgress?.stage === 'enviando'
+  const hasCampaignQuotaAvailable = !quota
+    || quota.mode === 'trial_unlimited'
+    || quota.mode === 'premium_unlimited'
+    || (quota.mode === 'pro_limited' && (quota.availableCampaigns ?? 0) > 0)
 
   return (
     <div className="space-y-5">
@@ -531,6 +668,36 @@ export function CampaignsClient({ initialData }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {quota && (
+        <div className="rounded-xl border bg-card px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold">Resumen de cuota de campañas</p>
+            <Badge variant="outline" className="text-[11px]">
+              {quota.mode === 'pro_limited' ? 'Plan Pro' : quota.mode === 'trial_unlimited' ? 'Trial' : quota.mode === 'premium_unlimited' ? 'Premium' : 'Sin acceso'}
+            </Badge>
+          </div>
+
+          {(quota.mode === 'trial_unlimited' || quota.mode === 'premium_unlimited') ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Campañas disponibles: <span className="font-semibold text-foreground">Ilimitadas</span>
+            </p>
+          ) : (
+            <div className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+              <p>
+                Disponibles ahora: <span className="font-semibold text-foreground tabular-nums">{quota.availableCampaigns ?? 0}</span>
+              </p>
+              <p className="tabular-nums">
+                Semana: {quota.weeklyRemaining ?? 0}/{quota.weeklyLimit ?? 0} · Mes: {quota.monthlyRemaining ?? 0}/{quota.monthlyLimit ?? 0}
+              </p>
+              <p>
+                Reinicio en <span className="font-semibold text-foreground tabular-nums">{quota.daysToReset ?? 0} días</span>
+                {quota.resetPeriod ? ` (${quota.resetPeriod === 'week' ? 'semanal' : 'mensual'})` : ''}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs + botón nueva campaña */}
       <Tabs defaultValue="active">
@@ -584,7 +751,7 @@ export function CampaignsClient({ initialData }: Props) {
                   onPause={() => handlePause(campaign.id)}
                   onPreview={() => openPreview(campaign.id)}
                   onDetail={() => openDetail(campaign.id, campaign.name)}
-                  isPending={isPending}
+                  isPending={isPending || isSendingCampaign}
                 />
               ))}
             </div>
@@ -608,7 +775,7 @@ export function CampaignsClient({ initialData }: Props) {
                   onPause={() => handlePause(campaign.id)}
                   onPreview={() => openPreview(campaign.id)}
                   onDetail={() => openDetail(campaign.id, campaign.name)}
-                  isPending={isPending}
+                  isPending={isPending || isSendingCampaign}
                 />
               ))}
             </div>
@@ -807,9 +974,116 @@ export function CampaignsClient({ initialData }: Props) {
                 <Button variant="outline" onClick={() => setPreviewOpen(false)} disabled={isPending} className="w-full sm:w-auto">
                   Cancelar
                 </Button>
-                <Button onClick={handleSendFromPreview} disabled={isPending} className="gap-1.5 w-full sm:w-auto">
-                  <Send className="h-4 w-4" />
+                <Button onClick={handleSendFromPreview} disabled={isPending || isSendingCampaign || !hasCampaignQuotaAvailable} className="gap-1.5 w-full sm:w-auto">
+                  {isSendingCampaign ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   Confirmar y enviar
+                </Button>
+              </div>
+
+              {!hasCampaignQuotaAvailable && (
+                <p className="text-xs text-amber-700">
+                  No tienes campanas disponibles por ahora.
+                  {quota?.daysToReset != null ? ` Se restablece en ${quota.daysToReset} dia${quota.daysToReset === 1 ? '' : 's'}.` : ''}
+                </p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog: progreso de envío ── */}
+      <Dialog
+        open={sendProgress?.open ?? false}
+        onOpenChange={(open) => {
+          if (!open && !isSendingCampaign) setSendProgress(null)
+        }}
+      >
+        <DialogContent className="w-full max-w-full sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-4 w-4" />
+              Progreso de envío
+            </DialogTitle>
+            <DialogDescription>
+              Seguimiento en tiempo real del envío por lotes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {sendProgress && (
+            <div className="space-y-5">
+              <div className="space-y-1">
+                <p className="text-sm font-medium leading-tight">{sendProgress.statusText}</p>
+                {sendProgress.stage === 'error' && sendProgress.errorMessage && (
+                  <p className="text-xs text-red-600">{sendProgress.errorMessage}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="tabular-nums">
+                    {sendProgress.processedRecipients}/{sendProgress.totalRecipients} destinatarios
+                  </span>
+                  <span className="tabular-nums">
+                    {sendProgress.totalRecipients > 0 ? Math.round((sendProgress.processedRecipients / sendProgress.totalRecipients) * 100) : 0}%
+                  </span>
+                </div>
+
+                <div className="relative h-3 overflow-hidden rounded-full bg-muted/70">
+                  <div className="absolute inset-0 opacity-60 [background:repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.24)_8px,rgba(255,255,255,0.24)_16px)]" />
+                  <div
+                    className="relative h-full rounded-full bg-emerald-500 transition-[width] duration-700 ease-out"
+                    style={{
+                      width: `${sendProgress.totalRecipients > 0 ? Math.max(2, Math.round((sendProgress.processedRecipients / sendProgress.totalRecipients) * 100)) : 2}%`,
+                    }}
+                  >
+                    {isSendingCampaign && (
+                      <div className="absolute inset-0 animate-pulse [background:linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent)]" />
+                    )}
+                  </div>
+
+                  <div
+                    className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-white bg-emerald-600 shadow-sm transition-[left] duration-700 ease-out"
+                    style={{
+                      left: `calc(${sendProgress.totalRecipients > 0 ? Math.max(2, Math.round((sendProgress.processedRecipients / sendProgress.totalRecipients) * 100)) : 2}% - 8px)`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Preparando</span>
+                  <span>Enviando</span>
+                  <span>Completado</span>
+                </div>
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`h-2.5 w-2.5 rounded-full ${sendProgress.stage !== 'preparando' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                    <span className="text-xs text-muted-foreground">1</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className={`h-2.5 w-2.5 rounded-full ${(sendProgress.stage === 'enviando' || sendProgress.stage === 'finalizado' || sendProgress.stage === 'error') ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+                    <span className="text-xs text-muted-foreground tabular-nums">{sendProgress.currentBatch}/{sendProgress.totalBatches}</span>
+                  </div>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className={`h-2.5 w-2.5 rounded-full ${(sendProgress.stage === 'finalizado' || sendProgress.stage === 'error') ? (sendProgress.stage === 'error' ? 'bg-red-500' : 'bg-emerald-500') : 'bg-muted-foreground/30'}`} />
+                    <span className="text-xs text-muted-foreground">3</span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground tabular-nums">
+                Enviados {sendProgress.sent} · Fallidos {sendProgress.failed}
+              </p>
+
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setSendProgress(null)} disabled={isSendingCampaign}>
+                  {isSendingCampaign ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Enviando...
+                    </span>
+                  ) : 'Cerrar'}
                 </Button>
               </div>
             </div>

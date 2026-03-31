@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCachedBusinessId } from '@/lib/auth-context'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/utils/phone'
+import { sendImageMessage, sendTextMessage } from '@/lib/whatsapp/client'
 import type { CustomerInsert } from '@/types/database'
 
 type ActionState = { error?: string; customerId?: string } | null
@@ -150,14 +151,14 @@ export async function registerCustomer(
     return { error: consentSaved.error }
   }
 
-  // Bono de bienvenida si está configurado
-  const { data: bizConfig } = await supabase
+  // Cargar datos del negocio para bono y mensaje de bienvenida por WhatsApp
+  const { data: businessData } = await supabase
     .from('businesses')
-    .select('points_config')
+    .select('name, logo_url, phone, address, points_config')
     .eq('id', businessId)
     .single()
 
-  const welcomeBonus = bizConfig?.points_config?.welcome_bonus ?? 0
+  const welcomeBonus = businessData?.points_config?.welcome_bonus ?? 0
 
   if (welcomeBonus > 0) {
     await supabase.from('points_ledger').insert({
@@ -170,7 +171,84 @@ export async function registerCustomer(
     })
   }
 
+  // Enviar bienvenida por WhatsApp sin bloquear el registro en caja.
+  // Si falla o tarda, no afecta el alta del cliente.
+  void sendCustomerWelcomeMessage({
+    to: phone,
+    customerName: name,
+    businessName: businessData?.name ?? 'Tu negocio',
+    businessLogoUrl: businessData?.logo_url ?? null,
+    businessPhone: businessData?.phone ?? null,
+    businessAddress: businessData?.address ?? null,
+    welcomeBonus,
+  })
+
   return { customerId: customer.id }
+}
+
+async function sendCustomerWelcomeMessage(params: {
+  to: string
+  customerName: string
+  businessName: string
+  businessLogoUrl: string | null
+  businessPhone: string | null
+  businessAddress: string | null
+  welcomeBonus: number
+}) {
+  const {
+    to,
+    customerName,
+    businessName,
+    businessLogoUrl,
+    businessPhone,
+    businessAddress,
+    welcomeBonus,
+  } = params
+
+  const contactLines: string[] = []
+  if (businessPhone?.trim()) {
+    contactLines.push(`Telefono del negocio: ${businessPhone.trim()}`)
+  }
+  if (businessAddress?.trim()) {
+    contactLines.push(`Direccion: ${businessAddress.trim()}`)
+  }
+
+  const contactBlock =
+    contactLines.length > 0
+      ? `\n\nDatos del negocio:\n${contactLines.join('\n')}`
+      : ''
+
+  const pointsBlock =
+    welcomeBonus > 0
+      ? `Ganaste ${welcomeBonus} puntos de bienvenida.\nTu saldo actual es ${welcomeBonus} puntos.`
+      : 'Ya quedaste registrado y comenzarás a acumular puntos en tu próxima compra.'
+
+  const message =
+    `Bienvenido a Puntaje.\n\n` +
+    `Hola ${customerName}, bienvenido al programa de lealtad de ${businessName}.\n` +
+    `${pointsBlock}${contactBlock}\n\n` +
+    'Gracias por registrarte.'
+
+  try {
+    if (businessLogoUrl) {
+      const imageResult = await sendImageMessage({
+        to,
+        imageUrl: businessLogoUrl,
+        caption: `Bienvenido a ${businessName} en Puntaje.`,
+      })
+
+      if (!imageResult.success) {
+        console.error('[registerCustomer] Error enviando logo por WhatsApp:', imageResult.error)
+      }
+    }
+
+    const textResult = await sendTextMessage(to, message)
+    if (!textResult.success) {
+      console.error('[registerCustomer] Error enviando bienvenida por WhatsApp:', textResult.error)
+    }
+  } catch (error) {
+    console.error('[registerCustomer] Error inesperado en WhatsApp de bienvenida:', error)
+  }
 }
 
 // ─── Obtener perfil completo del cliente ──────────────────────────────────────
