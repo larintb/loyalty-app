@@ -64,13 +64,13 @@ export function SalesChart({ data, days }: { data: DailySale[]; days: number }) 
   const maxVal = Math.max(...data.map((d) => d.total), 1)
 
   return (
-    <div className="h-48 w-full">
+    <div className="h-48 w-full min-w-0">
       {!hasData ? (
         <div className="h-full flex items-center justify-center">
           <p className="text-sm text-muted-foreground">Sin ventas en este período</p>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
             <XAxis

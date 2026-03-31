@@ -254,7 +254,7 @@ stripe.subscriptions.create({
     save_default_payment_method: 'on_subscription',
     payment_method_types: ['card'],
   },
-  trial_period_days: 14, // Trial gratis
+  trial_period_days: 7, // Trial gratis
   metadata: { business_id: businessId, plan_id: planId }
 })
 ```
@@ -651,7 +651,7 @@ export default async function SettingsPage() {
 
 ## 14. Notas Importantes
 
-1. **Trial de 14 días**: Se configura en `createSubscription()` con `trial_period_days: 14`. Durante trial NO se cobra nada.
+1. **Trial de 7 días**: Se configura en `createSubscription()` con `trial_period_days: 7`. Durante trial NO se cobra nada.
 
 2. **Moneda**: Usar MXN (pesos mexicanos). Stripe lo maneja nativamente.
 

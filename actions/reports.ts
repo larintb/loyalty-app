@@ -1,30 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-
-async function getBusinessId(
-  supabase: Awaited<ReturnType<typeof createClient>>
-): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .maybeSingle()
-
-  if (business) return business.id
-
-  const { data: staff } = await supabase
-    .from('staff_members')
-    .select('business_id')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .maybeSingle()
-
-  return staff?.business_id ?? null
-}
+import { getCachedBusinessId } from '@/lib/auth-context'
 
 // ─── Ventas diarias (últimos N días) ─────────────────────────────────────────
 
@@ -35,9 +12,10 @@ export type DailySale = {
 }
 
 export async function getDailySales(days = 30): Promise<DailySale[]> {
-  const supabase = await createClient()
-  const businessId = await getBusinessId(supabase)
+  const businessId = await getCachedBusinessId()
   if (!businessId) return []
+
+  const supabase = await createClient()
 
   const since = new Date()
   since.setDate(since.getDate() - days + 1)
@@ -91,9 +69,10 @@ export type TopCustomer = {
 }
 
 export async function getTopCustomers(limit = 10): Promise<TopCustomer[]> {
-  const supabase = await createClient()
-  const businessId = await getBusinessId(supabase)
+  const businessId = await getCachedBusinessId()
   if (!businessId) return []
+
+  const supabase = await createClient()
 
   const { data } = await supabase
     .from('customers')
@@ -132,9 +111,10 @@ export type ChurnCustomer = {
 }
 
 export async function getChurnRisk(): Promise<ChurnCustomer[]> {
-  const supabase = await createClient()
-  const businessId = await getBusinessId(supabase)
+  const businessId = await getCachedBusinessId()
   if (!businessId) return []
+
+  const supabase = await createClient()
 
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -180,9 +160,10 @@ export type PeriodMetrics = {
 }
 
 export async function getPeriodMetrics(days = 30): Promise<PeriodMetrics> {
-  const supabase = await createClient()
-  const businessId = await getBusinessId(supabase)
+  const businessId = await getCachedBusinessId()
   if (!businessId) return { totalSales: 0, totalTransactions: 0, avgTicket: 0, newCustomers: 0, returningRate: 0 }
+
+  const supabase = await createClient()
 
   const since = new Date()
   since.setDate(since.getDate() - days)

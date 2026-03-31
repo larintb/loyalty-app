@@ -4,6 +4,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getCachedBusinessId } from '@/lib/auth-context'
 import { normalizePhone } from '@/lib/utils/phone'
 import { sendImageMessage, sendTextMessage } from '@/lib/whatsapp/client'
 
@@ -137,20 +138,20 @@ function renderMessage(template: string, customerName: string, points: number, b
 }
 
 export async function getCampaignPageData(): Promise<CampaignPageData> {
-  const supabase = await createClient()
-  const context = await getBusinessContext(supabase)
+  const businessId = await getCachedBusinessId()
 
-  if (!context) {
+  if (!businessId) {
     return {
       summary: { total: 0, running: 0, sentToday: 0, blockedToday: 0 },
       campaigns: [],
     }
   }
 
+  const supabase = await createClient()
   const { data: campaigns } = await supabase
     .from('marketing_campaigns' as any)
     .select('id, name, status, created_at, scheduled_at, message_body, image_url, segment_json')
-    .eq('business_id', context.businessId)
+    .eq('business_id', businessId)
     .order('created_at', { ascending: false })
     .limit(30)
 

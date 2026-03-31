@@ -4,6 +4,7 @@
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getCachedBusinessId } from '@/lib/auth-context'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/utils/phone'
 import type { CustomerInsert } from '@/types/database'
@@ -241,10 +242,10 @@ export async function getCustomerProfile(customerId: string) {
 // ─── Listar clientes del negocio ──────────────────────────────────────────────
 
 export async function getCustomers(search?: string) {
-  const supabase = await createClient()
-
-  const businessId = await getBusinessId(supabase)
+  const businessId = await getCachedBusinessId()
   if (!businessId) return []
+
+  const supabase = await createClient()
 
   let query = supabase
     .from('customers')

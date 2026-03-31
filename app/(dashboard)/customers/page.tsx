@@ -4,10 +4,8 @@ import { getCustomers } from '@/actions/customers'
 import { CustomersClient } from './customers-client'
 
 export default async function CustomersPage() {
-  const access = await getPlanAccess()
+  const [access, customers] = await Promise.all([getPlanAccess(), getCustomers()])
   if (!access.canAccess) redirect('/settings/billing')
-
-  const customers = await getCustomers()
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 page-enter">

@@ -113,27 +113,38 @@ async function ensureMonthlyFinancePeriod(
 export async function createSale(payload: SalePayload): Promise<SaleResult> {
   const supabase = await createClient()
 
-  // Obtener contexto del usuario
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado.' }
 
-  const businessId = await getBusinessId(supabase, user.id)
+  // Fetch business (owner) and staff membership in parallel
+  const [{ data: ownerBusiness }, { data: staffRecord }] = await Promise.all([
+    supabase.from('businesses').select('id, points_config').eq('owner_id', user.id).maybeSingle(),
+    supabase.from('staff_members').select('id, business_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+  ])
+
+  const businessId = ownerBusiness?.id ?? staffRecord?.business_id ?? null
   if (!businessId) return { success: false, error: 'Negocio no encontrado.' }
 
-  const staffId = await getStaffId(supabase, user.id, businessId)
+  const staffId = ownerBusiness ? null : (staffRecord?.id ?? null)
 
-  // Obtener config de puntos del negocio
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('points_config')
-    .eq('id', businessId)
-    .single()
+  // If owner, we already have points_config; if staff, fetch it now
+  let config = ownerBusiness?.points_config
+  if (!config) {
+    const { data: biz } = await supabase.from('businesses').select('points_config').eq('id', businessId).single()
+    if (!biz) return { success: false, error: 'Negocio no encontrado.' }
+    config = biz.points_config
+  }
 
-  if (!business) return { success: false, error: 'Negocio no encontrado.' }
-
-  const config = business.points_config
   const saleDateISO = new Date().toISOString().split('T')[0]
-  const financePeriod = await ensureMonthlyFinancePeriod(supabase, businessId, saleDateISO)
+
+  // Fetch finance period and customer balance in parallel
+  const [financePeriod, customerResult] = await Promise.all([
+    ensureMonthlyFinancePeriod(supabase, businessId, saleDateISO),
+    payload.customerId
+      ? supabase.from('customers').select('total_points, name').eq('id', payload.customerId).single()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
   if ('error' in financePeriod) {
     return { success: false, error: financePeriod.error }
   }
@@ -141,18 +152,12 @@ export async function createSale(payload: SalePayload): Promise<SaleResult> {
   const subtotal = payload.total
   const discount = payload.discount ?? 0
 
-  // Leer balance actual del cliente (siempre, no solo al canjear)
   let pointsRedeemed = 0
   let discountByPoints = 0
   let customerCurrentBalance = 0
 
   if (payload.customerId) {
-    const { data: customer } = await supabase
-      .from('customers')
-      .select('total_points')
-      .eq('id', payload.customerId)
-      .single()
-
+    const customer = customerResult.data
     if (!customer) return { success: false, error: 'Cliente no encontrado.' }
 
     customerCurrentBalance = customer.total_points
@@ -259,16 +264,9 @@ export async function createSale(payload: SalePayload): Promise<SaleResult> {
     locked: false,
   })
 
-  // Obtener nombre del cliente para el resultado
-  let customerName: string | null = null
-  if (payload.customerId) {
-    const { data: c } = await supabase
-      .from('customers')
-      .select('name')
-      .eq('id', payload.customerId)
-      .single()
-    customerName = c?.name ?? null
-  }
+  const customerName: string | null = payload.customerId
+    ? (customerResult.data?.name ?? null)
+    : null
 
   return {
     success: true,
@@ -307,20 +305,6 @@ async function getBusinessId(
   return staff?.business_id ?? null
 }
 
-async function getStaffId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  businessId: string
-): Promise<string | null> {
-  const { data } = await supabase
-    .from('staff_members')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('business_id', businessId)
-    .maybeSingle()
-
-  return data?.id ?? null
-}
 
 // ─── Enviar ticket por WhatsApp ───────────────────────────────────────────────
 

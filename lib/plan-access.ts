@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { createClient } from '@/lib/supabase/server'
+import { cache } from 'react'
+import { getCachedUser, getCachedBusinessOwnerData, getCachedSubscriptionPlan } from '@/lib/auth-context'
 import { planIncludes, PLAN_NAMES, FEATURE_MIN_PLAN } from './plans'
 
 export type PlanAccess = {
@@ -25,41 +25,36 @@ const EMPTY: PlanAccess = {
   canAccess: false, showBanner: false, requiredPlanSlug: null, requiredPlanName: null,
 }
 
-export async function getPlanAccess(feature?: string): Promise<PlanAccess> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return EMPTY
+// Builds plan data from shared cached functions — no extra DB queries.
+const fetchPlanData = cache(async () => {
+  const user = await getCachedUser()
+  if (!user) return null
 
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('plan_status, trial_ends_at, plan_id')
-    .eq('owner_id', user.id)
-    .maybeSingle()
+  const [biz, plan] = await Promise.all([
+    getCachedBusinessOwnerData(),
+    getCachedSubscriptionPlan(),
+  ])
 
-  if (!business) return EMPTY
+  if (!biz) return null
 
-  let planSlug: string | null = null
-  let planName: string | null = null
-  let maxCustomers: number | null = null
-  const planId: string | null = (business as any).plan_id ?? null
-
-  if (planId) {
-    const { data: plan } = await supabase
-      .from('subscription_plans')
-      .select('slug, name, max_customers')
-      .eq('id', planId)
-      .maybeSingle()
-    planSlug = (plan as any)?.slug ?? null
-    planName = (plan as any)?.name ?? null
-    maxCustomers = (plan as any)?.max_customers ?? null
+  return {
+    biz,
+    planId: biz.plan_id,
+    planSlug: plan?.slug ?? null,
+    planName: plan?.name ?? null,
+    maxCustomers: plan?.max_customers ?? null,
   }
+})
+
+export async function getPlanAccess(feature?: string): Promise<PlanAccess> {
+  const data = await fetchPlanData()
+  if (!data) return EMPTY
+
+  const { biz, planId, planSlug, planName, maxCustomers } = data
 
   const now = new Date()
-  const trialEnd = (business as any).trial_ends_at
-    ? new Date((business as any).trial_ends_at)
-    : null
-  const isTrial =
-    (business as any).plan_status === 'trialing' && !!trialEnd && trialEnd > now
+  const trialEnd = biz.trial_ends_at ? new Date(biz.trial_ends_at) : null
+  const isTrial = biz.plan_status === 'trialing' && !!trialEnd && trialEnd > now
   const daysLeft = isTrial && trialEnd
     ? Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
     : 0
@@ -79,19 +74,19 @@ export async function getPlanAccess(feature?: string): Promise<PlanAccess> {
     if (isTrial) {
       canAccess = true
       showBanner = !planNormallyIncludes
-    } else if ((business as any).plan_status === 'active') {
+    } else if (biz.plan_status === 'active') {
       canAccess = planNormallyIncludes
     }
   } else {
-    canAccess = isTrial || ['active', 'cancelling'].includes((business as any).plan_status)
+    canAccess = isTrial || ['active', 'cancelling'].includes(biz.plan_status ?? '')
   }
 
   return {
     planId,
     planSlug,
     planName,
-    planStatus: (business as any).plan_status ?? null,
-    trialEndsAt: (business as any).trial_ends_at ?? null,
+    planStatus: biz.plan_status ?? null,
+    trialEndsAt: biz.trial_ends_at ?? null,
     isTrial,
     daysLeft,
     maxCustomers,

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getCachedBusinessId } from '@/lib/auth-context'
 import type {
   FinanceEntryInsert,
   FinancePeriodInsert,
@@ -197,9 +198,10 @@ export type DashboardMetrics = {
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics | null> {
-  const supabase = await createClient()
-  const businessId = await getBusinessId(supabase)
+  const businessId = await getCachedBusinessId()
   if (!businessId) return null
+
+  const supabase = await createClient()
 
   const now = new Date()
   const todayStr = now.toISOString().split('T')[0]
