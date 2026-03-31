@@ -500,6 +500,13 @@ async function prepareAudience(campaignId: string, businessId: string) {
     .select('customer_id, whatsapp_opt_in, opt_in_at, whatsapp_opt_out_at, last_marketing_sent_at')
     .in('customer_id', (customers ?? []).map((c) => c.id))
 
+  const { data: consentRows } = await (supabase as any)
+    .from('customer_consents' as any)
+    .select('customer_id, revoked_at, created_at')
+    .eq('business_id', businessId)
+    .in('customer_id', (customers ?? []).map((c) => c.id))
+    .order('created_at', { ascending: false })
+
   const { data: suppressionRows } = await supabase
     .from('whatsapp_suppression_list' as any)
     .select('phone')
@@ -507,8 +514,16 @@ async function prepareAudience(campaignId: string, businessId: string) {
 
   const suppression = new Set((suppressionRows ?? []).map((r: any) => normalizePhone(String(r.phone))))
   const prefsByCustomer = new Map<string, any>()
+  const latestConsentByCustomer = new Map<string, { revoked_at: string | null }>()
+
   for (const p of (prefs ?? []) as any[]) {
     prefsByCustomer.set(p.customer_id, p)
+  }
+
+  for (const row of (consentRows ?? []) as any[]) {
+    if (!latestConsentByCustomer.has(row.customer_id)) {
+      latestConsentByCustomer.set(row.customer_id, { revoked_at: row.revoked_at ?? null })
+    }
   }
 
   const minLastVisit = segment.inactiveDays
@@ -520,6 +535,8 @@ async function prepareAudience(campaignId: string, businessId: string) {
   for (const customer of customers ?? []) {
     const normalizedPhone = normalizePhone(customer.phone ?? '')
     const pref = prefsByCustomer.get(customer.id)
+    const consent = latestConsentByCustomer.get(customer.id)
+    const hasRevokedConsent = !!consent?.revoked_at
 
     let status: 'queued' | 'blocked' = 'queued'
     let blockedReason: string | null = null
@@ -527,7 +544,10 @@ async function prepareAudience(campaignId: string, businessId: string) {
     // Bloquear solo si el cliente explícitamente optó por no recibir mensajes
     const hasExplicitOptOut = pref?.whatsapp_opt_in === false || !!pref?.whatsapp_opt_out_at
 
-    if (hasExplicitOptOut) {
+    if (hasRevokedConsent) {
+      status = 'blocked'
+      blockedReason = 'consent_revoked'
+    } else if (hasExplicitOptOut) {
       status = 'blocked'
       blockedReason = 'no_opt_in'
     } else if (suppression.has(normalizedPhone)) {

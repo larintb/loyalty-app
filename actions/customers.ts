@@ -399,6 +399,19 @@ export async function revokeCustomerConsent(
     return { error: 'No se pudo revocar el consentimiento.' }
   }
 
+  const { error: prefsError } = await (supabase as any)
+    .from('customer_marketing_prefs' as any)
+    .upsert({
+      customer_id: customerId,
+      whatsapp_opt_in: false,
+      whatsapp_opt_out_at: now,
+      updated_at: now,
+    }, { onConflict: 'customer_id' })
+
+  if (prefsError) {
+    console.error('[revokeCustomerConsent] Error sincronizando opt-out de marketing:', prefsError)
+  }
+
   await (supabase as any)
     .from('customer_consent_events' as any)
     .insert({
