@@ -1,10 +1,10 @@
-// Whapi Cloud API
-// Docs: https://whapi.cloud/
+// WhatsApp Gateway propio — https://wa.puntaje.online
+// Docs: WHATSAPP_GATEWAY.md
 
 import { normalizePhone } from '@/lib/utils/phone'
 
-const BASE_URL = (process.env.WHAPI_API_URL ?? 'https://gate.whapi.cloud').replace(/\/$/, '')
-const ACCESS_TOKEN = process.env.WHAPI_TOKEN
+const BASE_URL = (process.env.WHATSAPP_API_URL ?? 'https://wa.puntaje.online').replace(/\/$/, '')
+const API_KEY  = process.env.WHATSAPP_API_KEY
 
 type SendTextResult =
   | { success: true; messageId: string }
@@ -12,90 +12,79 @@ type SendTextResult =
 
 export type SendMessageResult = SendTextResult
 
-async function sendWhapiMessage(
-  to: string,
-  endpoint: 'text' | 'image',
-  payload: Record<string, unknown>
-): Promise<SendMessageResult> {
-  if (!ACCESS_TOKEN) {
-    return {
-      success: false,
-      error: 'Falta WHAPI_TOKEN en variables de entorno.',
-    }
-  }
-
-  const normalized = normalizePhone(to)
-
-  // Los números móviles mexicanos en WhatsApp llevan un "1" extra después del
-  // código de país: 52XXXXXXXXXX → 521XXXXXXXXXX. Probamos ambos formatos.
-  const mxAlternative =
-    normalized.startsWith('52') && normalized.length === 12
-      ? `521${normalized.slice(2)}`
-      : null
-
-  const candidates = mxAlternative
-    ? [
-        `${mxAlternative}@s.whatsapp.net`,
-        `${normalized}@s.whatsapp.net`,
-        mxAlternative,
-        normalized,
-      ]
-    : [`${normalized}@s.whatsapp.net`, normalized]
-
-  const recipients = candidates
-  let lastError = 'Error desconocido de Whapi'
-
-  for (const recipient of recipients) {
-    const res = await fetch(`${BASE_URL}/messages/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: recipient,
-        ...payload,
-      }),
-    })
-
-    const data: unknown = await res.json().catch(() => ({}))
-
-    if (res.ok) {
-      return {
-        success: true,
-        messageId: getWhapiMessageId(data) ?? `sent:${recipient}`,
-      }
-    }
-
-    const whapiError = getWhapiError(data)
-    lastError = whapiError ?? `Error HTTP ${res.status} de Whapi`
-    console.error('[Whapi] Error:', data)
-  }
-
-  return { success: false, error: lastError }
+async function waRequest(
+  method: 'GET' | 'POST',
+  path: string,
+  body?: object
+): Promise<Response> {
+  return fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': API_KEY ?? '',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
 }
 
-// Enviar mensaje de texto simple
+export async function getStatus() {
+  const res = await waRequest('GET', '/api/status')
+  return res.json()
+}
+
+export async function checkNumber(phone: string): Promise<{ exists: boolean; waId?: string }> {
+  const res = await waRequest('GET', `/api/check-number/${encodeURIComponent(phone)}`)
+  if (!res.ok) return { exists: false }
+  return res.json()
+}
+
 export async function sendTextMessage(
   to: string,
   text: string
 ): Promise<SendTextResult> {
-  return sendWhapiMessage(to, 'text', { body: text })
+  if (!API_KEY) {
+    return { success: false, error: 'Falta WHATSAPP_API_KEY en variables de entorno.' }
+  }
+
+  const normalized = normalizePhone(to)
+  const res = await waRequest('POST', '/api/send-text', { to: normalized, body: text })
+  const data: unknown = await res.json().catch(() => ({}))
+
+  if (res.ok) {
+    const record = data as Record<string, unknown>
+    return { success: true, messageId: (record.messageId as string) ?? `sent:${normalized}` }
+  }
+
+  const record = data as Record<string, unknown>
+  return { success: false, error: (record.error as string) ?? `Error HTTP ${res.status}` }
 }
 
-// Enviar imagen con caption opcional
 export async function sendImageMessage(params: {
   to: string
   imageUrl: string
   caption?: string
 }): Promise<SendMessageResult> {
-  return sendWhapiMessage(params.to, 'image', {
-    media: params.imageUrl,
-    caption: params.caption ?? '',
+  if (!API_KEY) {
+    return { success: false, error: 'Falta WHATSAPP_API_KEY en variables de entorno.' }
+  }
+
+  const normalized = normalizePhone(params.to)
+  const res = await waRequest('POST', '/api/send-image', {
+    to: normalized,
+    imageUrl: params.imageUrl,
+    caption: params.caption,
   })
+  const data: unknown = await res.json().catch(() => ({}))
+
+  if (res.ok) {
+    const record = data as Record<string, unknown>
+    return { success: true, messageId: (record.messageId as string) ?? `sent:${normalized}` }
+  }
+
+  const record = data as Record<string, unknown>
+  return { success: false, error: (record.error as string) ?? `Error HTTP ${res.status}` }
 }
 
-// Enviar ticket como mensaje de texto formateado
 export async function sendTicketMessage(params: {
   to: string
   businessName: string
@@ -143,37 +132,6 @@ export async function sendTicketMessage(params: {
     `¡Gracias por tu preferencia! 🙌`
 
   return sendTextMessage(to, message)
-}
-
-function getWhapiMessageId(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null
-  const record = data as Record<string, unknown>
-
-  if (typeof record.id === 'string') return record.id
-
-  const message = record.message
-  if (message && typeof message === 'object') {
-    const messageId = (message as Record<string, unknown>).id
-    if (typeof messageId === 'string') return messageId
-  }
-
-  return null
-}
-
-function getWhapiError(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null
-  const record = data as Record<string, unknown>
-
-  const directMessage = record.message
-  if (typeof directMessage === 'string') return directMessage
-
-  const errorObj = record.error
-  if (errorObj && typeof errorObj === 'object') {
-    const errorMessage = (errorObj as Record<string, unknown>).message
-    if (typeof errorMessage === 'string') return errorMessage
-  }
-
-  return null
 }
 
 function formatDate(date: Date): string {
